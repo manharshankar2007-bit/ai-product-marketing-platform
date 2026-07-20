@@ -1,87 +1,62 @@
+import { useEffect, useState } from "react"
+import { Copy, Download, RotateCcw } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import type { NewsletterSection, UploadSuccessResponse } from "@/lib/api"
+import { Button } from "@/components/ui/button"
+import { NewsletterEditor } from "./NewsletterEditor"
+import { copyHtmlToClipboard, downloadHtml, type ExportSection } from "@/lib/newsletterExport"
+import type { NewsletterJson, NewsletterSection, UploadSuccessResponse } from "@/lib/api"
 
-/**
- * Plain, readable rendering of the structured newsletter JSON — white
- * background, dark text, system sans-serif, never monospace, regardless of
- * the surrounding app's own light/dark theme (a newsletter preview should
- * look like the artifact itself, not shift with the dashboard's theme).
- */
-export function NewsletterBody({ newsletter, itemsHeading }: { newsletter: NewsletterSection["newsletter"]; itemsHeading: string }) {
+function slugify(title: string): string {
+  return title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "newsletter"
+}
+
+function ExportButtons({ sections, documentTitle, filename }: { sections: ExportSection[]; documentTitle: string; filename: string }) {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = async () => {
+    await copyHtmlToClipboard(sections)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
   return (
-    <div
-      className="mx-auto w-full max-w-[600px] rounded-lg bg-white p-6 text-neutral-900"
-      style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" }}
-    >
-      <h1 className="mb-4 text-2xl font-bold leading-snug text-balance">{newsletter.title}</h1>
-
-      <p className="mb-4 leading-relaxed [overflow-wrap:break-word]">{newsletter.intro}</p>
-
-      {newsletter.whyBuilt && (
-        <>
-          <h2 className="mb-2 mt-6 text-lg font-semibold">Why We Built This</h2>
-          <p className="mb-4 leading-relaxed [overflow-wrap:break-word]">{newsletter.whyBuilt}</p>
-        </>
-      )}
-
-      {newsletter.navigation.length > 0 && (
-        <p className="mb-4 leading-relaxed [overflow-wrap:break-word]">
-          You can find it in: {newsletter.navigation.join(" → ")}
-        </p>
-      )}
-
-      {newsletter.items.length > 0 && (
-        <>
-          <h2 className="mb-2 mt-6 text-lg font-semibold">{itemsHeading}</h2>
-          {newsletter.items.map((item, index) => (
-            <div key={index} className="mb-4">
-              <p className="font-bold leading-relaxed">{item.name}</p>
-              <p className="leading-relaxed [overflow-wrap:break-word]">{item.body}</p>
-            </div>
-          ))}
-        </>
-      )}
-
-      {newsletter.meansToYou.length > 0 && (
-        <>
-          <h2 className="mb-2 mt-6 text-lg font-semibold">What This Means To You</h2>
-          <ul className="mb-4 list-disc space-y-1 pl-5 leading-relaxed">
-            {newsletter.meansToYou.map((point, index) => (
-              <li key={index} className="[overflow-wrap:break-word]">
-                {point}
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-
-      {newsletter.whatsNext && (
-        <>
-          <h2 className="mb-2 mt-6 text-lg font-semibold">What's Next</h2>
-          <p className="mb-4 leading-relaxed [overflow-wrap:break-word]">{newsletter.whatsNext}</p>
-        </>
-      )}
-
-      <hr className="my-4 border-neutral-200" />
-
-      <p className="text-sm leading-relaxed text-neutral-600">{newsletter.footer.address}</p>
-      <p className="text-sm leading-relaxed text-neutral-600">{newsletter.footer.city}</p>
-      <a href={newsletter.footer.websiteUrl} className="text-sm font-medium underline">
-        VISIT WEBSITE
-      </a>
+    <div className="flex gap-2">
+      <Button size="sm" variant="outline" onClick={() => downloadHtml(sections, documentTitle, filename)}>
+        <Download /> Download HTML
+      </Button>
+      <Button size="sm" variant="outline" onClick={handleCopy}>
+        <Copy /> {copied ? "Copied!" : "Copy HTML"}
+      </Button>
     </div>
   )
 }
 
-function NewsletterCard({ title, section }: { title: string; section: NewsletterSection }) {
+function NewsletterCard({
+  title,
+  section,
+  draft,
+  onChange,
+  onReset,
+}: {
+  title: string
+  section: NewsletterSection
+  draft: NewsletterJson
+  onChange: (newsletter: NewsletterJson) => void
+  onReset: () => void
+}) {
   return (
     <Card className="w-full max-w-2xl">
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>generated in {(section.metadata.generationTimeMs / 1000).toFixed(1)}s</CardDescription>
+      <CardHeader className="flex flex-row items-start justify-between gap-2">
+        <div>
+          <CardTitle>{title}</CardTitle>
+          <CardDescription>generated in {(section.metadata.generationTimeMs / 1000).toFixed(1)}s</CardDescription>
+        </div>
+        <Button variant="ghost" size="sm" onClick={onReset}>
+          <RotateCcw /> Reset to AI draft
+        </Button>
       </CardHeader>
       <CardContent>
-        <NewsletterBody newsletter={section.newsletter} itemsHeading={title} />
+        <NewsletterEditor newsletter={draft} onChange={onChange} itemsHeading={title} />
         {(section.metadata.possibleOmissions || section.metadata.missingSections.length > 0) && (
           <div className="mt-3 space-y-1 rounded-md border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
             {section.metadata.possibleOmissions && (
@@ -92,8 +67,82 @@ function NewsletterCard({ title, section }: { title: string; section: Newsletter
             )}
           </div>
         )}
+        <div className="mt-3">
+          <ExportButtons sections={[{ newsletter: draft, itemsHeading: title }]} documentTitle={title} filename={`${slugify(title)}.html`} />
+        </div>
       </CardContent>
     </Card>
+  )
+}
+
+function NewsletterReview({ result }: { result: UploadSuccessResponse }) {
+  const { whatsNew, comingSoon } = result.newsletters
+
+  const [whatsNewDraft, setWhatsNewDraft] = useState<NewsletterJson | null>(whatsNew?.newsletter ?? null)
+  const [comingSoonDraft, setComingSoonDraft] = useState<NewsletterJson | null>(comingSoon?.newsletter ?? null)
+
+  // Re-sync drafts whenever a new upload produces new AI output — draft
+  // state must never survive across a genuinely new result.
+  useEffect(() => {
+    setWhatsNewDraft(whatsNew?.newsletter ?? null)
+  }, [whatsNew])
+  useEffect(() => {
+    setComingSoonDraft(comingSoon?.newsletter ?? null)
+  }, [comingSoon])
+
+  if (!whatsNew && !comingSoon) {
+    return (
+      <Card className="w-full max-w-2xl">
+        <CardHeader>
+          <CardTitle>No Newsletter Generated</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            No shipped, in-progress, or planned features were found in this document.
+          </p>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  const combinedSections: ExportSection[] = [
+    ...(whatsNewDraft ? [{ newsletter: whatsNewDraft, itemsHeading: "What's New" }] : []),
+    ...(comingSoonDraft ? [{ newsletter: comingSoonDraft, itemsHeading: "Coming Soon" }] : []),
+  ]
+  const isMixed = Boolean(whatsNew) && Boolean(comingSoon)
+
+  return (
+    <div className="flex w-full max-w-2xl flex-col gap-6">
+      {whatsNew && whatsNewDraft && (
+        <NewsletterCard
+          title="What's New"
+          section={whatsNew}
+          draft={whatsNewDraft}
+          onChange={setWhatsNewDraft}
+          onReset={() => setWhatsNewDraft(whatsNew.newsletter)}
+        />
+      )}
+      {comingSoon && comingSoonDraft && (
+        <NewsletterCard
+          title="Coming Soon"
+          section={comingSoon}
+          draft={comingSoonDraft}
+          onChange={setComingSoonDraft}
+          onReset={() => setComingSoonDraft(comingSoon.newsletter)}
+        />
+      )}
+      {isMixed && (
+        <Card className="w-full max-w-2xl">
+          <CardHeader>
+            <CardTitle>Export Combined</CardTitle>
+            <CardDescription>Both newsletters as one document, clearly separated.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ExportButtons sections={combinedSections} documentTitle="Newsletter" filename="newsletter-combined.html" />
+          </CardContent>
+        </Card>
+      )}
+    </div>
   )
 }
 
@@ -118,24 +167,5 @@ export function NewsletterResult({ result, errorMessage }: NewsletterResultProps
     )
   }
 
-  const { whatsNew, comingSoon } = result!.newsletters
-
-  return (
-    <div className="flex w-full max-w-2xl flex-col gap-6">
-      {whatsNew && <NewsletterCard title="What's New" section={whatsNew} />}
-      {comingSoon && <NewsletterCard title="Coming Soon" section={comingSoon} />}
-      {!whatsNew && !comingSoon && (
-        <Card className="w-full max-w-2xl">
-          <CardHeader>
-            <CardTitle>No Newsletter Generated</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              No shipped, in-progress, or planned features were found in this document.
-            </p>
-          </CardContent>
-        </Card>
-      )}
-    </div>
-  )
+  return <NewsletterReview result={result!} />
 }
