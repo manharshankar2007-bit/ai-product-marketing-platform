@@ -31,9 +31,28 @@ export interface NewsletterJson {
   footer: NewsletterFooter
 }
 
+export interface UngroundedClaim {
+  claim: string
+  why_ungrounded: string
+}
+
+export interface VerificationReport {
+  passed: boolean
+  blocking: {
+    fabricatedPaths: string[]
+    ungroundedItems: string[]
+  }
+  advisory: {
+    droppedFeatures: string[]
+    ungroundedClaims: UngroundedClaim[]
+  }
+  check3Error: string | null
+}
+
 export interface NewsletterSection {
   newsletter: NewsletterJson
   metadata: WriterMetadata
+  verification: VerificationReport
 }
 
 export interface UploadSuccessResponse {

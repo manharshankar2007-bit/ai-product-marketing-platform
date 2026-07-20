@@ -135,6 +135,13 @@ export function prepareWriterPrompt(builderOutput: NewsletterBuilderOutput): Wri
       : normalized
   const { prompt } = buildWriterPrompt({ builderOutput: filtered })
 
+  // Exactly the items embedded in the prompt above (post-dedupe,
+  // post-normalization, post-description-filter) — the true ground truth
+  // for the Verifier (see verifier/newsletterVerifier.ts), not a
+  // re-derived approximation that could drift from this function's own
+  // filtering logic.
+  const sourceItems = filtered.newsletterType === "coming_soon" ? filtered.comingSoon : filtered.whatsNew
+
   return {
     prompt,
     newsletterType: builderOutput.newsletterType,
@@ -143,5 +150,6 @@ export function prepareWriterPrompt(builderOutput: NewsletterBuilderOutput): Wri
       promptVersion: PROMPT_VERSION,
       newsletterType: builderOutput.newsletterType,
     },
+    sourceItems,
   }
 }

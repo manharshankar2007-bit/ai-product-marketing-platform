@@ -4,7 +4,30 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { NewsletterEditor } from "./NewsletterEditor"
 import { copyHtmlToClipboard, downloadHtml, type ExportSection } from "@/lib/newsletterExport"
-import type { NewsletterJson, NewsletterSection, UploadSuccessResponse } from "@/lib/api"
+import type { NewsletterJson, NewsletterSection, UploadSuccessResponse, VerificationReport } from "@/lib/api"
+
+/**
+ * Detect-and-report only — this never blocks anything, it's a status line.
+ * Blocking signals represent possible fabrication. Advisory signals are
+ * intentionally quiet: Slot 5 curates source features and Check 3 is a
+ * high-recall review aid, so neither should turn a grounded draft red.
+ */
+function VerificationStatus({ verification }: { verification: VerificationReport }) {
+  const fabricationIssues = verification.blocking.fabricatedPaths.length + verification.blocking.ungroundedItems.length
+  const advisoryCount = verification.advisory.droppedFeatures.length + verification.advisory.ungroundedClaims.length
+
+  if (verification.passed) {
+    return <p className="text-xs text-emerald-700">✓ Verified: all content grounded in source</p>
+  }
+
+  return (
+    <div className="text-xs text-amber-700">
+      <p>⚠ {fabricationIssues} possible fabrication{fabricationIssues === 1 ? "" : "s"} — review flagged items</p>
+      {advisoryCount > 0 && <p className="text-muted-foreground">{advisoryCount} advisory signal{advisoryCount === 1 ? "" : "s"}</p>}
+      {verification.check3Error && <p className="text-muted-foreground">Note: the AI grounding check did not complete ({verification.check3Error}).</p>}
+    </div>
+  )
+}
 
 function slugify(title: string): string {
   return title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "newsletter"
@@ -50,6 +73,9 @@ function NewsletterCard({
         <div>
           <CardTitle>{title}</CardTitle>
           <CardDescription>generated in {(section.metadata.generationTimeMs / 1000).toFixed(1)}s</CardDescription>
+          <div className="mt-1">
+            <VerificationStatus verification={section.verification} />
+          </div>
         </div>
         <Button variant="ghost" size="sm" onClick={onReset}>
           <RotateCcw /> Reset to AI draft

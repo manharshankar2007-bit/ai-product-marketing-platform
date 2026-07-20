@@ -11,6 +11,7 @@ import { buildNewsletter } from "../newsletter/builder"
 import type { NewsletterBuilderOutput } from "../newsletter/types"
 import { prepareWriterPrompt } from "../writer/writerEngine"
 import { WriterProvider } from "../writer/writerProvider"
+import { verifyNewsletter } from "../verifier/newsletterVerifier"
 
 /**
  * Slices a "mixed" Builder output down to just its What's New content, so
@@ -75,13 +76,38 @@ export async function uploadDocument(
     // like a standalone whats_new/coming_soon Builder output to the
     // Writer, so its existing per-type structure/validation applies
     // unchanged to each.
-    const whatsNew = builderOutput.whatsNew.length > 0
-      ? await writerProvider.generateNewsletter(prepareWriterPrompt(sliceForWhatsNew(builderOutput)))
-      : null
+    // The Verifier (see newsletterVerifier.ts) runs AFTER the Writer, BEFORE
+    // the response goes out — detect-and-report only, never blocking. It
+    // needs the exact sourceItems the Writer's prompt was built from (kept
+    // around from prepareWriterPrompt here, rather than re-derived), so it
+    // compares against what the model actually saw, not an approximation.
+    const documentContext = {
+      problemStatement: builderOutput.metadata.problemStatement,
+      whyBuilt: builderOutput.metadata.whyBuilt,
+      releasePlan: builderOutput.metadata.releasePlan,
+    }
 
-    const comingSoon = builderOutput.comingSoon.length > 0
-      ? await writerProvider.generateNewsletter(prepareWriterPrompt(sliceForComingSoon(builderOutput)))
-      : null
+    const whatsNewPrep = builderOutput.whatsNew.length > 0 ? prepareWriterPrompt(sliceForWhatsNew(builderOutput)) : null
+    const whatsNewResult = whatsNewPrep ? await writerProvider.generateNewsletter(whatsNewPrep) : null
+    const whatsNewVerification =
+      whatsNewResult && whatsNewPrep
+        ? await verifyNewsletter(whatsNewResult.newsletter, whatsNewPrep.sourceItems, "What's New", documentContext)
+        : null
+    const whatsNew =
+      whatsNewResult && whatsNewVerification
+        ? { newsletter: whatsNewResult.newsletter, metadata: whatsNewResult.metadata, verification: whatsNewVerification }
+        : null
+
+    const comingSoonPrep = builderOutput.comingSoon.length > 0 ? prepareWriterPrompt(sliceForComingSoon(builderOutput)) : null
+    const comingSoonResult = comingSoonPrep ? await writerProvider.generateNewsletter(comingSoonPrep) : null
+    const comingSoonVerification =
+      comingSoonResult && comingSoonPrep
+        ? await verifyNewsletter(comingSoonResult.newsletter, comingSoonPrep.sourceItems, "Coming Soon", documentContext)
+        : null
+    const comingSoon =
+      comingSoonResult && comingSoonVerification
+        ? { newsletter: comingSoonResult.newsletter, metadata: comingSoonResult.metadata, verification: comingSoonVerification }
+        : null
 
     res.status(201).json({
       success: true,

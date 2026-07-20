@@ -1,0 +1,40 @@
+{
+  "itemsHeading": "What's New",
+  "documentContext": {
+    "problemStatement": "Dispatch teams need a faster way to see active rider tasks.",
+    "whyBuilt": "Teams currently rely on manual status checks.",
+    "releasePlan": []
+  },
+  "sourceItems": [
+    {
+      "kind": "feature",
+      "title": "Rider Active Task Webhook",
+      "status": "shipped",
+      "description": "Provides structured updates about a rider's ongoing task sequence.",
+      "businessBenefit": "Keeps internal systems in sync without relying on live tracking UI.",
+      "userImpact": "Operations teams can monitor active tasks programmatically.",
+      "configuration": null,
+      "navigationPath": ["Settings", "Communications", "Rider"],
+      "steps": [],
+      "limitations": null,
+      "rolloutNotes": null,
+      "parentTitle": null,
+      "source": { "page": null, "excerpt": null }
+    }
+  ],
+  "newsletter": {
+    "title": "Rider task updates are now available",
+    "intro": "See a rider's active work without checking the live tracking screen.",
+    "whyBuilt": "Manual status checks slow dispatch teams down.",
+    "navigation": ["Settings", "Communications", "Rider"],
+    "items": [
+      {
+        "name": "Active task webhook",
+        "body": "Send structured task updates to your internal systems as riders move through active work. COD cash is automatically settled to every rider wallet at the end of each shift."
+      }
+    ],
+    "meansToYou": ["Keep dispatch systems in sync with active rider work."],
+    "whatsNext": "",
+    "footer": { "address": "", "city": "", "websiteUrl": "" }
+  }
+}

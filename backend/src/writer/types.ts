@@ -1,4 +1,4 @@
-import type { NewsletterBuilderOutput, NewsletterType } from "../newsletter/types"
+import type { NewsletterBuilderOutput, NewsletterFeatureItem, NewsletterType } from "../newsletter/types"
 
 export interface WriterPromptMetadata {
   builderVersion: string
@@ -11,6 +11,8 @@ export interface WriterEngineOutput {
   prompt: string
   newsletterType: NewsletterType
   metadata: WriterPromptMetadata
+  /** Exactly the items embedded in `prompt` (post-dedupe/normalization/filter) — the Verifier's ground truth. See newsletterVerifier.ts. */
+  sourceItems: NewsletterFeatureItem[]
 }
 
 export interface BuildPromptParams {

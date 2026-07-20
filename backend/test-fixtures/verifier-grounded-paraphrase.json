@@ -1,0 +1,40 @@
+{
+  "itemsHeading": "What's New",
+  "documentContext": {
+    "problemStatement": "Dispatch teams need a faster way to see active rider tasks.",
+    "whyBuilt": "Teams currently rely on manual status checks.",
+    "releasePlan": ["Webhook rollout"]
+  },
+  "sourceItems": [
+    {
+      "kind": "feature",
+      "title": "Rider Active Task Webhook",
+      "status": "shipped",
+      "description": "Provides structured updates about a rider's ongoing task sequence, including deliveries and admin tasks.",
+      "businessBenefit": "Keeps internal systems in sync without relying on live tracking UI.",
+      "userImpact": "Operations teams can monitor active tasks programmatically.",
+      "configuration": null,
+      "navigationPath": ["Settings", "Communications", "Rider"],
+      "steps": [],
+      "limitations": "Completed and terminal tasks are excluded.",
+      "rolloutNotes": null,
+      "parentTitle": null,
+      "source": { "page": null, "excerpt": null }
+    }
+  ],
+  "newsletter": {
+    "title": "Stay ahead of rider work in real time",
+    "intro": "Your systems can now follow riders' current work as it happens, so dispatch does not need to depend on the live tracking screen.",
+    "whyBuilt": "Manual status chasing slows the team down.",
+    "navigation": ["Settings", "Communications", "Rider"],
+    "items": [
+      {
+        "name": "Real-time active-task updates",
+        "body": "Connect your internal tools to structured updates for in-progress delivery and admin work, while completed tasks stay out of the feed."
+      }
+    ],
+    "meansToYou": ["Give operations programmatic visibility into current rider work."],
+    "whatsNext": "",
+    "footer": { "address": "", "city": "", "websiteUrl": "" }
+  }
+}

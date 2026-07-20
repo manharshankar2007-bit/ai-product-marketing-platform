@@ -1,9 +1,11 @@
 import type { WriterProviderMetadata } from "../writer/writerProvider"
 import type { NewsletterJson } from "../writer/newsletterOutput.schema"
+import type { VerificationReport } from "../verifier/newsletterVerifier"
 
 export interface NewsletterSection {
   newsletter: NewsletterJson
   metadata: WriterProviderMetadata
+  verification: VerificationReport
 }
 
 export interface UploadSuccessResponse {
