@@ -55,7 +55,20 @@ export const FeatureExtractionSchema = z
     // extractor.md for extraction rules.
     problemStatement: z.string().nullable(),
     whyBuilt: z.string().nullable(),
-    releasePlan: z.array(z.string()),
+    // Schema-level tolerance, not prompt guidance: observed live, the model
+    // returns null here (not []) on some chunks despite extractor.md saying
+    // "[] if absent" — a soft prompt instruction the model honors most but
+    // not all of the time. A crashed FeatureExtractionSchema.strict() parse
+    // used to kill the entire run before chunk 1. `.default()` alone only
+    // fires on `undefined`, never on a literal `null` — the actual observed
+    // failure — so a `.transform()` is used instead to coerce null to []
+    // deterministically. Same "move the guarantee from prompt to code"
+    // principle as every other rule already moved there (title
+    // normalization, null-description filter, parent/child dedupe).
+    releasePlan: z
+      .array(z.string())
+      .nullable()
+      .transform((value) => value ?? []),
     features: z.array(FeatureSchema),
     uiChanges: z.array(z.string()),
     enhancements: z.array(z.string()),

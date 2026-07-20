@@ -165,6 +165,11 @@ export function buildNewsletter(input: FeatureExtraction): NewsletterBuilderOutp
       documentTitle: input.documentTitle,
       releaseName: input.releaseName,
       builderVersion: NEWSLETTER_BUILDER_VERSION,
+      // Pass-through only — no transform, summary, or rewording. Gives the
+      // Writer's existing Slot 2/3/5 instructions their missing source data.
+      problemStatement: input.problemStatement,
+      whyBuilt: input.whyBuilt,
+      releasePlan: input.releasePlan,
     },
     newsletterType,
     whatsNew,

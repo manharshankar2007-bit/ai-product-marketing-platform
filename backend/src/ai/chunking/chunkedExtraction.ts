@@ -81,6 +81,18 @@ export async function extractChunkLive(chunk: DocumentChunk, outputReserveTokens
     )
   }
 
+  // Logged unconditionally, immediately after a successful API response —
+  // BEFORE finish_reason/JSON-parse/Zod validation, any of which can throw
+  // below. A validation failure used to mean this call's real token cost
+  // was never recorded anywhere: the completion happened and consumed
+  // tokens regardless of whether the response passed validation, but the
+  // caller's own usage logging only runs on the success path (after this
+  // function returns), which a thrown error never reaches.
+  console.log(
+    `[chunkedExtraction] chunk ${chunk.index} usage (recorded before validation): ` +
+      `prompt=${completion.usage?.prompt_tokens}, completion=${completion.usage?.completion_tokens}, total=${completion.usage?.total_tokens}`,
+  )
+
   const choice = completion.choices[0]
   const finishReason = choice?.finish_reason ?? "unknown"
   const rawContent = choice?.message?.content ?? ""

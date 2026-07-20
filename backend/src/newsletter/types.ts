@@ -6,6 +6,10 @@ export interface NewsletterMetadata {
   documentTitle: string | null
   releaseName: string | null
   builderVersion: string
+  /** Pass-through from FeatureExtraction — see featureExtraction.schema.ts. Gives the Writer's Slot 2/3/5 instructions their source data. */
+  problemStatement: string | null
+  whyBuilt: string | null
+  releasePlan: string[]
 }
 
 /**
