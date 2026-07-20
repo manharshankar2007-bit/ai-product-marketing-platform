@@ -42,12 +42,21 @@ function assertValidInput(input: FeatureExtraction): void {
   }
 }
 
+/**
+ * Deterministic, non-AI fallback for a null description — never left to
+ * the Writer to decide. Extraction legitimately returns null here for
+ * terse, tabular source entries with no descriptive sentence (see
+ * FeatureSchema); this renders something concrete instead of passing
+ * null further down the pipeline.
+ */
+const NO_DESCRIPTION_FALLBACK = "Details to be announced."
+
 function featureToItem(feature: ExtractedFeature): NewsletterFeatureItem {
   return {
     kind: "feature",
     title: feature.title,
     status: feature.status,
-    description: feature.description,
+    description: feature.description ?? NO_DESCRIPTION_FALLBACK,
     businessBenefit: feature.businessBenefit,
     userImpact: feature.userImpact,
     configuration: feature.configuration,
@@ -55,6 +64,7 @@ function featureToItem(feature: ExtractedFeature): NewsletterFeatureItem {
     steps: feature.steps,
     limitations: feature.limitations,
     rolloutNotes: feature.rolloutNotes,
+    parentTitle: feature.parentTitle,
     source: feature.source,
   }
 }

@@ -16,8 +16,14 @@ generated newsletters against real approved ones.
 - `rider-active-task-webhook-example.md` — "Rider Active Task Webhook"
   (What's New — a second real example, used to cross-check patterns against
   the first)
+- `whats-new-cod-handling.md` — "COD Handling Logics for Riders" (What's
+  New — a third real example, cross-checked against the first two; same
+  structure, adds a 4-item feature grouping under one release)
 - `coming-soon-example.md` — "System Changes effective from July 1" (Coming
-  Soon)
+  Soon — grouped sub-style, see Section 5.3)
+- `coming-soon-map-routing.md` — "Map Based Routing" (Coming Soon —
+  single-feature sub-style, see Section 5.3; labeled "Coming Soon" in its
+  subject line but its body follows the What's New structure)
 
 > **Note on source material:** the task that produced this guide asked for
 > a second example titled "Leveling Up: Rider Tags." That file was never
@@ -116,8 +122,11 @@ consumer. Avoid sales language entirely — see Section 9.
 
 ## 5. Structure — Two Separate Newsletter Types
 
-These are two distinct documents with two distinct fixed structures. Do
-not merge them.
+These are two distinct documents. Do not merge What's New content and
+Coming Soon content into one document. Coming Soon itself has two valid
+body sub-styles depending on content shape — see Sections 5.2–5.4 — but
+picking between them is still about matching the release's own content,
+never about combining both newsletter types together.
 
 ### 5.1 "What's New" structure
 
@@ -147,7 +156,12 @@ not merge them.
    concrete to tease.
 8. **Footer** — company address + "VISIT WEBSITE" link.
 
-### 5.2 "Coming Soon" structure
+### 5.2 "Coming Soon" — grouped sub-style
+
+Evidence: `coming-soon-example.md` ("System Changes effective from July 1").
+Use this sub-style when a release bundles **multiple, unrelated changes**
+into one release note — see Section 5.4 for how to tell the two Coming
+Soon sub-styles apart.
 
 1. **Title** — theme name (in the observed example, expressed entirely
    through the tagline and intro; no separate plain title line was
@@ -170,11 +184,45 @@ not merge them.
    source, only the grouped-category-then-item content shape was.
 6. **Footer** — company address + "VISIT WEBSITE" link. No "What's Next"
    teaser in this structure — not observed in the source, and it wouldn't
-   make sense (a Coming Soon piece describing planned items shouldn't
-   tease a second, unspecified thing beyond them).
+   make sense (a Coming Soon piece describing multiple bundled changes
+   shouldn't tease a further, unspecified thing beyond them).
 
-**These two structures are not interchangeable.** What's New always closes
-on reader impact ("What This Means To You"); Coming Soon never does — it
+This sub-style always closes directly on the last category's changes —
+never on a reader-impact section.
+
+### 5.3 "Coming Soon" — single-feature sub-style
+
+Evidence: `coming-soon-map-routing.md` ("Coming Soon: Map Based Routing").
+This is a real, approved newsletter that uses the "Coming Soon" subject
+line, but its body is structurally identical to the What's New structure
+in Section 5.1 (Title / Tagline / Intro / **Why We Built This?** /
+**What's New!** / **What This Means To You** / **What's Next**) — not the
+grouped, category-then-item shape of Section 5.2. Use this sub-style when
+a release announces **one cohesive feature or theme** (even if that
+feature has several facets/items) that simply hasn't fully shipped yet,
+rather than several disparate changes.
+
+The company's own usage shows "Coming Soon" labels the *timing* (not yet
+fully live), not a fixed body structure — the body structure to use still
+depends on whether the content is one cohesive feature or several bundled
+changes.
+
+### 5.4 Telling the two Coming Soon sub-styles apart
+
+- **Single-feature** (Section 5.3): one feature/theme, described through a
+  small number of closely related facets — e.g. Map-Based Routing's three
+  items (Forward/Reverse Orders, Hover Insights, On-the-Fly Route
+  Construction) are all facets of the same map-routing capability. Closes
+  on reader impact, like What's New.
+- **Grouped** (Section 5.2): several genuinely unrelated changes bundled
+  into one release note — e.g. Verification & KYC, Account Structure,
+  Billing & Invoicing, and Cash Automation are unrelated areas, not facets
+  of one feature. Closes directly on the last category, no reader-impact
+  section.
+
+**These structures are not interchangeable.** What's New and the
+single-feature Coming Soon sub-style both close on reader impact ("What
+This Means To You"); the grouped Coming Soon sub-style never does — it
 closes directly on the last category's changes.
 
 ---

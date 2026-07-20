@@ -26,6 +26,8 @@ export interface NewsletterFeatureItem {
   steps: string[]
   limitations: string | null
   rolloutNotes: string | null
+  /** Exact title of the feature this one is structurally nested under, or null if top-level. See featureExtraction.schema.ts. */
+  parentTitle: string | null
   source: FeatureSource
 }
 

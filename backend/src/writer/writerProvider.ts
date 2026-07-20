@@ -3,6 +3,7 @@ import { env } from "../config/env"
 import { GroqProviderError } from "../ai/errors"
 import type { NewsletterBuilderOutput, NewsletterType } from "../newsletter/types"
 import type { WriterEngineOutput } from "./types"
+import { ModelNewsletterJsonSchema, type ModelNewsletterJson, type NewsletterJson } from "./newsletterOutput.schema"
 
 const TEMPERATURE = 0.3
 
@@ -14,14 +15,6 @@ const TEMPERATURE = 0.3
  * not quote them verbatim.
  */
 const TITLE_WORD_MATCH_THRESHOLD = 0.6
-
-/**
- * possibleOmissions is flagged when fewer than this fraction of the
- * Builder's supplied distinct feature titles appear to be represented.
- * Chosen per the task's own suggested ~80% figure — a deliberately
- * generous bar so this stays a "heads up" signal, not a strict gate.
- */
-const COMPLETENESS_THRESHOLD = 0.8
 
 const STOPWORDS = new Set([
   "the",
@@ -63,26 +56,21 @@ const META_COMMENTARY_PATTERNS: RegExp[] = [
 /** Unfilled template stubs that indicate a broken/incomplete generation. */
 const PLACEHOLDER_PATTERNS: RegExp[] = [/lorem ipsum/i, /\btbd\b/i, /\btodo\b/i, /\[insert[^\]]*]/i]
 
-interface RequiredHeading {
-  label: string
-  /** Any one of these (case-insensitive substrings) satisfies this heading. */
-  patterns: string[]
+/** Slot 5's hard ceiling — not a target. See promptBuilder.ts. */
+const MAX_WHATS_NEW_ITEMS = 4
+
+// Code-assembled, never requested from the model (see promptBuilder.ts).
+const WHATS_NEXT_LINE = "Something exciting is coming soon - Stay tuned !!"
+// No "What's Next" teaser for a Coming Soon newsletter — documented as
+// never observed in real Coming Soon source material, and describing
+// planned items shouldn't tease a second, unspecified thing beyond them.
+// Represented as an empty string; the renderer omits the section when empty.
+const NO_WHATS_NEXT = ""
+const STATIC_FOOTER = {
+  address: "M3M Urbana Business Park, Sector 67",
+  city: "Gurugram, Haryana (122101)",
+  websiteUrl: "https://pidge.in/",
 }
-
-// "Why We Built This" and "Why This Matters To You" are both documented in
-// newsletterStyle.md (Section 6) as real, equally valid labels observed in
-// approved newsletters for the same conceptual section — either satisfies
-// this requirement.
-const WHATS_NEW_HEADINGS: RequiredHeading[] = [
-  { label: "Why We Built This", patterns: ["why we built this", "why this matters to you"] },
-  { label: "What's New!", patterns: ["what's new", "whats new"] },
-  { label: "What This Means To You", patterns: ["what this means to you"] },
-]
-
-const COMING_SOON_HEADINGS: RequiredHeading[] = [
-  { label: "Why This Is Changing", patterns: ["why this is changing"] },
-  { label: "Key Changes", patterns: ["key changes"] },
-]
 
 export interface WriterProviderMetadata {
   model: string
@@ -92,10 +80,12 @@ export interface WriterProviderMetadata {
   totalTokens?: number
   possibleOmissions: boolean
   missingSections: string[]
+  /** Feature titles whose navigationPath was deterministically inserted because the model never rendered it verbatim within the retry budget. */
+  navigationPathsPatched: string[]
 }
 
 export interface GenerateNewsletterResult {
-  newsletter: string
+  newsletter: NewsletterJson
   metadata: WriterProviderMetadata
 }
 
@@ -167,53 +157,125 @@ function isTitleRepresented(title: string, normalizedText: string): boolean {
 }
 
 /**
- * Heuristic, not a guarantee: true when meaningfully fewer than
- * COMPLETENESS_THRESHOLD of the supplied feature titles appear (even
- * paraphrased) in the generated text. With zero supplied titles there is
- * nothing to omit, so this always returns false in that case.
+ * Repurposed for the slot-filling design: the old 80%-title-coverage bar
+ * assumed a newsletter should try to mention every supplied feature. The
+ * new design deliberately curates down to 3-4 items (Slot 5), so "most
+ * titles are absent" is now the CORRECT, expected case, not an omission.
+ * This now flags the much rarer, much more meaningful failure: the
+ * output doesn't correlate with the JSON at all — none of the supplied
+ * titles show up in any form, which is what a hallucinated/off-topic
+ * generation looks like. Curating 3 out of 27 titles is fine; recognizing
+ * zero of them is not.
  */
-export function checkPossibleOmissions(newsletterText: string, featureTitles: string[]): boolean {
+export function checkPossibleOmissions(newsletter: ModelNewsletterJson, featureTitles: string[]): boolean {
   if (featureTitles.length === 0) return false
 
-  const normalizedText = newsletterText.toLowerCase()
+  const normalizedText = flattenModelJsonText(newsletter).toLowerCase()
   const representedCount = featureTitles.filter((title) => isTitleRepresented(title, normalizedText)).length
 
-  return representedCount / featureTitles.length < COMPLETENESS_THRESHOLD
+  return representedCount === 0
 }
 
-function requiredHeadingsFor(newsletterType: NewsletterType): RequiredHeading[] {
-  if (newsletterType === "whats_new") return WHATS_NEW_HEADINGS
-  if (newsletterType === "coming_soon") return COMING_SOON_HEADINGS
-  return [...WHATS_NEW_HEADINGS, ...COMING_SOON_HEADINGS]
+/** Every text field the model produced, concatenated for substring/pattern scanning. */
+function flattenModelJsonText(newsletter: ModelNewsletterJson): string {
+  return [
+    newsletter.title,
+    newsletter.intro,
+    newsletter.whyBuilt ?? "",
+    ...newsletter.items.flatMap((item) => [item.name, item.body]),
+    ...newsletter.meansToYou,
+  ].join("\n")
 }
 
-/** Warning-only: names of required section headings not found in the output. */
-export function findMissingSections(newsletterText: string, newsletterType: NewsletterType): string[] {
-  const normalized = newsletterText.toLowerCase()
-  return requiredHeadingsFor(newsletterType)
-    .filter((heading) => !heading.patterns.some((pattern) => normalized.includes(pattern)))
-    .map((heading) => heading.label)
+/** Slot 5 hard-limit violation, as its own reason — a real rejection, not a warning. */
+export function findItemCountViolations(newsletter: ModelNewsletterJson): string[] {
+  const count = newsletter.items.length
+  return count > MAX_WHATS_NEW_ITEMS
+    ? [`items has ${count} entries, exceeding the hard limit of ${MAX_WHATS_NEW_ITEMS}.`]
+    : []
 }
 
 /**
- * Hard-rejection checks only. Returns a list of failure reasons — empty
- * means the output passed. Deliberately does NOT check for the substring
- * "coming soon" anywhere: real approved newsletters legitimately contain
- * phrasing like "Something exciting is coming soon - Stay tuned!" in their
- * closing section, and rejecting on that substring would false-positive
- * on correct output.
+ * The single navigation path Slot 4 surfaces — the first non-empty
+ * navigationPath found (in document order) among the features relevant
+ * to this newsletter's type. This becomes the `navigation` field verbatim
+ * (the frontend joins it into "You can find it in: X → Y → Z"), not a
+ * per-item bullet under each feature — the model is never asked for this
+ * field at all (see promptBuilder.ts), so title-position-based matching
+ * (the old markdown-era approach) doesn't apply here: there's no
+ * per-feature location to find, and it also used to silently break once
+ * Slot 5 started grouping/renaming titles, since the JSON's original
+ * title text often didn't appear verbatim in the model's rewritten output.
  */
-export function findRejectionReasons(text: string): string[] {
+function getPrimaryNavigationPath(builderOutput: NewsletterBuilderOutput): string[] | null {
+  const items = builderOutput.newsletterType === "coming_soon" ? builderOutput.comingSoon : builderOutput.whatsNew
+  const withPath = items.find((item) => item.navigationPath.length > 0)
+  return withPath?.navigationPath ?? null
+}
+
+/** Warning-only: names of expected sections not present in the structured output. */
+export function findMissingSections(newsletter: ModelNewsletterJson, newsletterType: NewsletterType): string[] {
+  const missing: string[] = []
+  if (newsletter.items.length === 0) {
+    missing.push(newsletterType === "coming_soon" ? "Coming Soon" : "What's New")
+  }
+  // "What This Means To You" is only expected for a whats_new/mixed release —
+  // same asymmetry as before: Coming Soon items frequently have no
+  // businessBenefit/userImpact content this early, so its absence there
+  // isn't flagged.
+  if (newsletterType !== "coming_soon" && newsletter.meansToYou.length === 0) {
+    missing.push("What This Means To You")
+  }
+  return missing
+}
+
+interface ParsedModelJson {
+  data: ModelNewsletterJson | null
+  error: string | null
+}
+
+/**
+ * Defensively parses the model's response into ModelNewsletterJsonSchema.
+ * response_format: json_object should mean no fences ever appear, but
+ * strips them if present anyway rather than trusting that unconditionally.
+ */
+function parseModelJson(rawText: string): ParsedModelJson {
+  const stripped = rawText
+    .trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/```\s*$/i, "")
+    .trim()
+
+  if (stripped.length === 0) {
+    return { data: null, error: "Output is empty." }
+  }
+
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(stripped)
+  } catch {
+    return { data: null, error: "Output was not valid JSON." }
+  }
+
+  const validation = ModelNewsletterJsonSchema.safeParse(parsed)
+  if (!validation.success) {
+    return { data: null, error: `Output did not match the expected JSON shape: ${validation.error.message}` }
+  }
+
+  return { data: validation.data, error: null }
+}
+
+/**
+ * Hard-rejection checks on an already-parsed, schema-valid response.
+ * Deliberately does NOT check for the substring "coming soon" anywhere:
+ * real approved newsletters legitimately contain phrasing like "Something
+ * exciting is coming soon - Stay tuned!" in their closing section (added
+ * in code, but this check runs against model text fields too), and
+ * rejecting on that substring would false-positive on correct output.
+ */
+export function findRejectionReasons(newsletter: ModelNewsletterJson): string[] {
   const reasons: string[] = []
-
-  if (text.trim().length === 0) {
-    reasons.push("Output is empty.")
-    return reasons
-  }
-
-  if (text.includes("```")) {
-    reasons.push("Output contains markdown code fences.")
-  }
+  const text = flattenModelJsonText(newsletter)
 
   if (META_COMMENTARY_PATTERNS.some((pattern) => pattern.test(text))) {
     reasons.push("Output contains apparent model meta-commentary.")
@@ -254,27 +316,48 @@ export class WriterProvider {
     const featureTitles = builderOutput ? getDistinctFeatureTitles(builderOutput) : []
 
     const attemptFailures: string[] = []
-    const maxAttempts = 2
+    // Navigation (Slot 4), whatsNext, and footer are now ALWAYS code-
+    // assembled, never model-produced — the model isn't even asked for
+    // these keys (see promptBuilder.ts), so they're never a retry trigger.
+    // Structural/parse failures and the Slot 5 item-count ceiling are the
+    // only real rejection reasons now.
+    const maxAttempts = 3
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       const startedAt = Date.now()
       const completion = await this.requestCompletion(prompt)
       const generationTimeMs = Date.now() - startedAt
-      const text = completion.choices[0]?.message?.content ?? ""
+      const rawText = completion.choices[0]?.message?.content ?? ""
 
-      const rejectionReasons = findRejectionReasons(text)
+      const { data: modelJson, error: parseError } = parseModelJson(rawText)
+
+      if (!modelJson) {
+        attemptFailures.push(`Attempt ${attempt}: ${parseError}`)
+        continue
+      }
+
+      const rejectionReasons = [...findRejectionReasons(modelJson), ...findItemCountViolations(modelJson)]
 
       if (rejectionReasons.length === 0) {
+        const navigation = builderOutput ? (getPrimaryNavigationPath(builderOutput) ?? []) : []
+        const newsletter: NewsletterJson = {
+          ...modelJson,
+          navigation,
+          whatsNext: newsletterType === "coming_soon" ? NO_WHATS_NEXT : WHATS_NEXT_LINE,
+          footer: STATIC_FOOTER,
+        }
+
         return {
-          newsletter: text.trim(),
+          newsletter,
           metadata: {
             model: this.model,
             generationTimeMs,
             promptTokens: completion.usage?.prompt_tokens,
             completionTokens: completion.usage?.completion_tokens,
             totalTokens: completion.usage?.total_tokens,
-            possibleOmissions: checkPossibleOmissions(text, featureTitles),
-            missingSections: findMissingSections(text, newsletterType),
+            possibleOmissions: checkPossibleOmissions(modelJson, featureTitles),
+            missingSections: findMissingSections(modelJson, newsletterType),
+            navigationPathsPatched: navigation.length > 0 ? [navigation.join(" → ")] : [],
           },
         }
       }
@@ -290,6 +373,7 @@ export class WriterProvider {
       return await this.client.chat.completions.create({
         model: this.model,
         temperature: TEMPERATURE,
+        response_format: { type: "json_object" },
         messages: [{ role: "user", content: prompt }],
       })
     } catch (error) {

@@ -1,0 +1,656 @@
+{
+  "documentTitle": "SPOT Shifts/Loaned Rider Management",
+  "releaseName": null,
+  "problemStatement": "Pre-assignment creates a brittle dependency: if a rider doesn't show up, the vendor TL has to manually delete the shift and reassign it to another rider — a time-sensitive, high-friction operation on the ground.",
+  "whyBuilt": "The current rider-lending process is entirely manual and CT-dependent. There is no structured channel for a business to communicate rider requirements to a supplier, no way for suppliers to receive and act on those requirements in a trackable way, and no mechanism for riders to self-select into available shifts.",
+  "releasePlan": [
+    "Control Tower Team view",
+    "Supplier View",
+    "Business View"
+  ],
+  "features": [
+    {
+      "title": "Spot Shifts Module",
+      "status": "in_progress",
+      "description": "A new module to formalize and streamline the process of businesses requesting riders from suppliers for a defined period.",
+      "businessBenefit": "Removes the dependency on pre-assignment and control tower intervention by creating a structured, two-sided request-fulfillment flow directly on the dashboard.",
+      "userImpact": null,
+      "configuration": null,
+      "navigationPath": [
+        "Spot Shifts/Loaned Riders"
+      ],
+      "steps": [],
+      "limitations": null,
+      "rolloutNotes": "This phase of scope is only for business and vendors where EON mapping exists.",
+      "source": {
+        "page": null,
+        "excerpt": null
+      },
+      "parentTitle": null
+    },
+    {
+      "title": "Section 1 — Created (Business View)",
+      "status": "in_progress",
+      "description": "A workspace for managing all outbound spot shift requests.",
+      "businessBenefit": null,
+      "userImpact": null,
+      "configuration": null,
+      "navigationPath": [
+        "Spot Shifts/Loaned Riders",
+        "Created"
+      ],
+      "steps": [],
+      "limitations": null,
+      "rolloutNotes": null,
+      "source": {
+        "page": null,
+        "excerpt": null
+      },
+      "parentTitle": null
+    },
+    {
+      "title": "Section 2 — Received (Vendor / Supplier View)",
+      "status": "in_progress",
+      "description": "A workspace for managing all inbound spot shift requests from businesses.",
+      "businessBenefit": null,
+      "userImpact": null,
+      "configuration": null,
+      "navigationPath": [
+        "Spot Shifts/Loaned Riders",
+        "Received"
+      ],
+      "steps": [],
+      "limitations": null,
+      "rolloutNotes": null,
+      "source": {
+        "page": null,
+        "excerpt": null
+      },
+      "parentTitle": null
+    },
+    {
+      "title": "Request Creation — CT Team Only",
+      "status": "in_progress",
+      "description": "The CT team creates spot shift requests on behalf of businesses.",
+      "businessBenefit": null,
+      "userImpact": null,
+      "configuration": null,
+      "navigationPath": [],
+      "steps": [],
+      "limitations": null,
+      "rolloutNotes": "This is intentional — the team wants to observe how requests are structured, how suppliers respond, and what patterns emerge on the ground before opening up self-serve request creation to businesses directly.",
+      "source": {
+        "page": null,
+        "excerpt": null
+      },
+      "parentTitle": null
+    },
+    {
+      "title": "Request Visibility — Business",
+      "status": "in_progress",
+      "description": "Businesses can see requests raised on their behalf by the CT team.",
+      "businessBenefit": null,
+      "userImpact": null,
+      "configuration": null,
+      "navigationPath": [],
+      "steps": [],
+      "limitations": null,
+      "rolloutNotes": null,
+      "source": {
+        "page": null,
+        "excerpt": null
+      },
+      "parentTitle": null
+    },
+    {
+      "title": "Broadcasting Logic — EON Mapping",
+      "status": "in_progress",
+      "description": "Requests are broadcasted only to suppliers who are already mapped to that business in the EON mapping table.",
+      "businessBenefit": null,
+      "userImpact": null,
+      "configuration": null,
+      "navigationPath": [],
+      "steps": [],
+      "limitations": null,
+      "rolloutNotes": null,
+      "source": {
+        "page": null,
+        "excerpt": null
+      },
+      "parentTitle": null
+    },
+    {
+      "title": "Request Fulfillment — Vendor / Supplier",
+      "status": "in_progress",
+      "description": "Suppliers can take 2 primary actions: directly assign riders or open the shift for riders to self opt-in.",
+      "businessBenefit": null,
+      "userImpact": null,
+      "configuration": null,
+      "navigationPath": [],
+      "steps": [],
+      "limitations": null,
+      "rolloutNotes": null,
+      "source": {
+        "page": null,
+        "excerpt": null
+      },
+      "parentTitle": null
+    },
+    {
+      "title": "Use Case 2 — Control Tower Team: End-to-End Spot Shift Management",
+      "status": "in_progress",
+      "description": "The CT team acts as the demand-side proxy — creating shift requirements on behalf of businesses, monitoring fulfillment progress, managing real-time exceptions, and reviewing post-shift performance.",
+      "businessBenefit": null,
+      "userImpact": null,
+      "configuration": null,
+      "navigationPath": [
+        "Admin Panel V2",
+        "Spot Shifts/Loaned Riders"
+      ],
+      "steps": [],
+      "limitations": null,
+      "rolloutNotes": null,
+      "source": {
+        "page": null,
+        "excerpt": null
+      },
+      "parentTitle": null
+    },
+    {
+      "title": "Flow 1 — Creating a Spot Shift Requirement",
+      "status": "in_progress",
+      "description": "The CT team initiates a spot shift request on behalf of a business. This is the starting point of the entire Spot Shifts lifecycle.",
+      "businessBenefit": null,
+      "userImpact": null,
+      "configuration": "Loaned Riders reporting must be enabled for your organization by your account manager before this report appears in the Reports menu.",
+      "navigationPath": [],
+      "steps": [],
+      "limitations": null,
+      "rolloutNotes": null,
+      "source": {
+        "page": null,
+        "excerpt": null
+      },
+      "parentTitle": null
+    },
+    {
+      "title": "Flow 2 — Scheduled Tab: Pre-Execution Monitoring",
+      "status": "in_progress",
+      "description": "The Scheduled tab is the CT team's primary workspace for managing upcoming shifts before they go live.",
+      "businessBenefit": null,
+      "userImpact": null,
+      "configuration": null,
+      "navigationPath": [],
+      "steps": [],
+      "limitations": null,
+      "rolloutNotes": null,
+      "source": {
+        "page": null,
+        "excerpt": null
+      },
+      "parentTitle": null
+    },
+    {
+      "title": "Flow 3 — Active Tab: Real-Time Operational Monitoring",
+      "status": "in_progress",
+      "description": "Once a future/spot shift's start time is reached, i.e. 1 hour prior to actual shift start time it moves to the Active tab. This is the CT team's live operations view.",
+      "businessBenefit": null,
+      "userImpact": null,
+      "configuration": null,
+      "navigationPath": [],
+      "steps": [],
+      "limitations": null,
+      "rolloutNotes": null,
+      "source": {
+        "page": null,
+        "excerpt": null
+      },
+      "parentTitle": null
+    },
+    {
+      "title": "Flow 4 — Completed Tab: Post-Shift Analytics",
+      "status": "in_progress",
+      "description": "Once a shift concludes, it moves to the Completed tab. This is the CT team's post-execution review layer.",
+      "businessBenefit": null,
+      "userImpact": null,
+      "configuration": null,
+      "navigationPath": [],
+      "steps": [],
+      "limitations": null,
+      "rolloutNotes": null,
+      "source": {
+        "page": null,
+        "excerpt": null
+      },
+      "parentTitle": null
+    },
+    {
+      "title": "Flow 5 — Cancelled Tab",
+      "status": "in_progress",
+      "description": "Since the CT team has full operational accountability they would have an option to cancel a requirement before the shift has started.",
+      "businessBenefit": null,
+      "userImpact": null,
+      "configuration": null,
+      "navigationPath": [],
+      "steps": [],
+      "limitations": null,
+      "rolloutNotes": null,
+      "source": {
+        "page": null,
+        "excerpt": null
+      },
+      "parentTitle": null
+    },
+    {
+      "title": "Business View: Spot Shifts / Loaned Riders",
+      "status": "in_progress",
+      "description": "The Business dashboard in the Spot Shifts module is entirely monitoring-oriented. In Phase 1, businesses do not create requests — the CT team does this on their behalf.",
+      "businessBenefit": null,
+      "userImpact": null,
+      "configuration": null,
+      "navigationPath": [
+        "Spot Shifts / Loaned Riders"
+      ],
+      "steps": [],
+      "limitations": null,
+      "rolloutNotes": "This phase of scope is only for business and vendors where EON mapping exists.",
+      "source": {
+        "page": null,
+        "excerpt": null
+      },
+      "parentTitle": null
+    },
+    {
+      "title": "Cancellation Reasons",
+      "status": "in_progress",
+      "description": "Cancellation can only be done by the CT team for now. Reasons that would be shown in the business cancelled tab would be as follows:",
+      "businessBenefit": null,
+      "userImpact": null,
+      "configuration": null,
+      "navigationPath": [],
+      "steps": [],
+      "limitations": null,
+      "rolloutNotes": null,
+      "source": {
+        "page": null,
+        "excerpt": null
+      },
+      "parentTitle": null
+    },
+    {
+      "title": "Tab A — Open Requests",
+      "status": "in_progress",
+      "description": "Visibility into requests raised by the CT team on behalf of the business that are awaiting supplier response.",
+      "businessBenefit": null,
+      "userImpact": null,
+      "configuration": null,
+      "navigationPath": [],
+      "steps": [],
+      "limitations": null,
+      "rolloutNotes": null,
+      "source": {
+        "page": null,
+        "excerpt": null
+      },
+      "parentTitle": null
+    },
+    {
+      "title": "Tab B — Fulfillment in Progress",
+      "status": "in_progress",
+      "description": "The most operationally significant pre-shift state for the business. At least one supplier has accepted the request and rider sourcing is actively underway.",
+      "businessBenefit": null,
+      "userImpact": null,
+      "configuration": null,
+      "navigationPath": [],
+      "steps": [],
+      "limitations": null,
+      "rolloutNotes": null,
+      "source": {
+        "page": null,
+        "excerpt": null
+      },
+      "parentTitle": null
+    },
+    {
+      "title": "Tab C — Active",
+      "status": "in_progress",
+      "description": "Real-time visibility into a live shift. The business can see how many riders are on ground versus what was requested, and track attendance quality as the shift progresses.",
+      "businessBenefit": null,
+      "userImpact": null,
+      "configuration": null,
+      "navigationPath": [],
+      "steps": [],
+      "limitations": null,
+      "rolloutNotes": null,
+      "source": {
+        "page": null,
+        "excerpt": null
+      },
+      "parentTitle": null
+    },
+    {
+      "title": "Tab D — Completed",
+      "status": "in_progress",
+      "description": "Post-shift historical record. Businesses can review final delivery against what was requested, assess attendance quality, and download relevant reports.",
+      "businessBenefit": null,
+      "userImpact": null,
+      "configuration": null,
+      "navigationPath": [],
+      "steps": [],
+      "limitations": null,
+      "rolloutNotes": null,
+      "source": {
+        "page": null,
+        "excerpt": null
+      },
+      "parentTitle": null
+    },
+    {
+      "title": "Tab E — Cancelled",
+      "status": "in_progress",
+      "description": "Audit trail for requests that did not proceed — whether cancelled by the CT team, rejected by all suppliers, or lapsed without action.",
+      "businessBenefit": null,
+      "userImpact": null,
+      "configuration": null,
+      "navigationPath": [],
+      "steps": [],
+      "limitations": null,
+      "rolloutNotes": null,
+      "source": {
+        "page": null,
+        "excerpt": null
+      },
+      "parentTitle": null
+    },
+    {
+      "title": "Supplier View: Spot Shifts / Loaned Riders",
+      "status": "in_progress",
+      "description": "The Supplier dashboard in the Spot Shifts module is action-oriented and competition-driven. Suppliers receive inbound requests from businesses they are mapped to via EON, decide whether to accept request and source riders through self-selection or direct assignment, and monitor their fulfillment contribution against the overall shift requirement.",
+      "businessBenefit": null,
+      "userImpact": null,
+      "configuration": null,
+      "navigationPath": [
+        "Spot Shifts / Loaned Riders"
+      ],
+      "steps": [],
+      "limitations": null,
+      "rolloutNotes": null,
+      "source": {
+        "page": null,
+        "excerpt": null
+      },
+      "parentTitle": null
+    },
+    {
+      "title": "Request Expiry — Supplier Inaction",
+      "status": "in_progress",
+      "description": "When a supplier does not accept or reject a request before the shift start time is reached, the request expires automatically.",
+      "businessBenefit": null,
+      "userImpact": null,
+      "configuration": null,
+      "navigationPath": [],
+      "steps": [],
+      "limitations": null,
+      "rolloutNotes": null,
+      "source": {
+        "page": null,
+        "excerpt": null
+      },
+      "parentTitle": null
+    },
+    {
+      "title": "Reports and Filters",
+      "status": "in_progress",
+      "description": "Downloadable directly from the Completed tab in both Supplier and Business sections: The reports should only show information of the rider who were part of the Spot Shift or manually assigned rider to the same shift.",
+      "businessBenefit": null,
+      "userImpact": null,
+      "configuration": null,
+      "navigationPath": [],
+      "steps": [],
+      "limitations": null,
+      "rolloutNotes": null,
+      "source": {
+        "page": null,
+        "excerpt": null
+      },
+      "parentTitle": null
+    },
+    {
+      "title": "Rider Application",
+      "status": "in_progress",
+      "description": "Similar to how the flexi Shifts are visible to riders on the rider application, a card for SPOT shift would also be visible.",
+      "businessBenefit": null,
+      "userImpact": null,
+      "configuration": null,
+      "navigationPath": [],
+      "steps": [],
+      "limitations": null,
+      "rolloutNotes": null,
+      "source": {
+        "page": null,
+        "excerpt": null
+      },
+      "parentTitle": null
+    },
+    {
+      "title": "Spot Shifts",
+      "status": "in_progress",
+      "description": "A new demand-supply orchestration layer built on top of the existing Loan Rider infrastructure — it changes how shifts are requested and fulfilled, not how the underlying rider movement and management works.",
+      "businessBenefit": null,
+      "userImpact": null,
+      "configuration": null,
+      "navigationPath": [],
+      "steps": [],
+      "limitations": null,
+      "rolloutNotes": null,
+      "source": {
+        "page": null,
+        "excerpt": null
+      },
+      "parentTitle": null
+    },
+    {
+      "title": "Rider Assignment by Supplier",
+      "status": "in_progress",
+      "description": "Rider assignment by a supplier can be done from two places: The newly created spot and lone rider management page in the received section, where the supplier assigns a specific rider to the request, or The roster management module, from where the riders are currently being assigned by the suppliers.",
+      "businessBenefit": null,
+      "userImpact": null,
+      "configuration": null,
+      "navigationPath": [],
+      "steps": [
+        "The supplier assigns a specific rider to the request from the newly created spot and lone rider management page in the received section.",
+        "The supplier assigns riders from the roster management module."
+      ],
+      "limitations": null,
+      "rolloutNotes": null,
+      "source": {
+        "page": null,
+        "excerpt": null
+      },
+      "parentTitle": null
+    },
+    {
+      "title": "Roster Management Module Update",
+      "status": "in_progress",
+      "description": "The supplier should choose whether they are creating the shift for their own business or for another business. If they choose another business, they should only see a pseudo name for the spot request that was raised. All other data should be automatically filled in for zone, hub, time, and networks. The supplier should only need to fill in the specific rider names.",
+      "businessBenefit": null,
+      "userImpact": null,
+      "configuration": null,
+      "navigationPath": [],
+      "steps": [
+        "The supplier chooses whether they are creating the shift for their own business or for another business.",
+        "If they choose another business, they should only see a pseudo name for the spot request that was raised.",
+        "All other data should be automatically filled in for zone, hub, time, and networks.",
+        "The supplier should only need to fill in the specific rider names."
+      ],
+      "limitations": null,
+      "rolloutNotes": null,
+      "source": {
+        "page": null,
+        "excerpt": null
+      },
+      "parentTitle": null
+    },
+    {
+      "title": "Shift Timeline & Audit Log",
+      "status": "planned",
+      "description": "Every spot shift request maintains a complete event timeline, accessible from the Shift Detail View at any stage.",
+      "businessBenefit": null,
+      "userImpact": null,
+      "configuration": null,
+      "navigationPath": [],
+      "steps": [],
+      "limitations": "What Is Excluded in Phase 1: Shift Created, Requirement Updated, Rider Opted In, Rider Force Assigned, Shift Timing Updated, Shift Cancelled, Rider Logged In, Rider Logged Out, Shift Completed",
+      "rolloutNotes": null,
+      "source": {
+        "page": null,
+        "excerpt": null
+      },
+      "parentTitle": null
+    },
+    {
+      "title": "Tracked Events",
+      "status": "planned",
+      "description": "Each event records who performed the action, what was changed, and when it occurred.",
+      "businessBenefit": "Provides a full audit trail for dispute resolution and operational review.",
+      "userImpact": null,
+      "configuration": null,
+      "navigationPath": [],
+      "steps": [],
+      "limitations": null,
+      "rolloutNotes": null,
+      "source": {
+        "page": null,
+        "excerpt": null
+      },
+      "parentTitle": "Shift Timeline & Audit Log"
+    },
+    {
+      "title": "Risk Status Logic",
+      "status": "planned",
+      "description": "Risk Status Logic (based on Opted / Requested) with Healthy, At Risk, and Critical thresholds.",
+      "businessBenefit": null,
+      "userImpact": null,
+      "configuration": "The specific thresholds for At Risk and Critical are platform-configured and apply uniformly across all shifts.",
+      "navigationPath": [],
+      "steps": [],
+      "limitations": null,
+      "rolloutNotes": null,
+      "source": {
+        "page": null,
+        "excerpt": null
+      },
+      "parentTitle": null
+    },
+    {
+      "title": "Predictive Fill Analytics",
+      "status": "planned",
+      "description": null,
+      "businessBenefit": null,
+      "userImpact": null,
+      "configuration": null,
+      "navigationPath": [],
+      "steps": [],
+      "limitations": null,
+      "rolloutNotes": null,
+      "source": {
+        "page": null,
+        "excerpt": null
+      },
+      "parentTitle": null
+    },
+    {
+      "title": "Live Rider Tracking on Map",
+      "status": "planned",
+      "description": null,
+      "businessBenefit": null,
+      "userImpact": null,
+      "configuration": null,
+      "navigationPath": [],
+      "steps": [],
+      "limitations": null,
+      "rolloutNotes": null,
+      "source": {
+        "page": null,
+        "excerpt": null
+      },
+      "parentTitle": null
+    },
+    {
+      "title": "Supplier Recommendation Engine",
+      "status": "planned",
+      "description": "Backend-driven",
+      "businessBenefit": null,
+      "userImpact": null,
+      "configuration": null,
+      "navigationPath": [],
+      "steps": [],
+      "limitations": null,
+      "rolloutNotes": null,
+      "source": {
+        "page": null,
+        "excerpt": null
+      },
+      "parentTitle": null
+    },
+    {
+      "title": "Dynamic Supplier Addition",
+      "status": "planned",
+      "description": "Controlled by EON mapping",
+      "businessBenefit": null,
+      "userImpact": null,
+      "configuration": null,
+      "navigationPath": [],
+      "steps": [],
+      "limitations": null,
+      "rolloutNotes": null,
+      "source": {
+        "page": null,
+        "excerpt": null
+      },
+      "parentTitle": null
+    },
+    {
+      "title": "Business-Level Analytics",
+      "status": "planned",
+      "description": "Businesses do not create requests in Phase 1",
+      "businessBenefit": null,
+      "userImpact": null,
+      "configuration": null,
+      "navigationPath": [],
+      "steps": [],
+      "limitations": null,
+      "rolloutNotes": null,
+      "source": {
+        "page": null,
+        "excerpt": null
+      },
+      "parentTitle": null
+    },
+    {
+      "title": "Automated Escalation Engine",
+      "status": "planned",
+      "description": null,
+      "businessBenefit": null,
+      "userImpact": null,
+      "configuration": null,
+      "navigationPath": [],
+      "steps": [],
+      "limitations": null,
+      "rolloutNotes": null,
+      "source": {
+        "page": null,
+        "excerpt": null
+      },
+      "parentTitle": null
+    }
+  ],
+  "uiChanges": [],
+  "enhancements": [],
+  "bugFixes": [],
+  "knownLimitations": [
+    "Business self-serve request creation is not in scope for this phase.",
+    "Geo-based broadcasting logic is not in scope for this phase.",
+    "The business cannot see supplier-specific rider names, individual supplier allocations, or internal supplier fulfillment logic."
+  ]
+}

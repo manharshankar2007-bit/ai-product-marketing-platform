@@ -89,6 +89,14 @@ export class GroqProvider {
       throw new GroqProviderError("Groq response did not contain any content")
     }
 
+    if (completion.usage) {
+      console.log(
+        `[GroqProvider] usage - prompt: ${completion.usage.prompt_tokens}, ` +
+          `completion: ${completion.usage.completion_tokens}, ` +
+          `total: ${completion.usage.total_tokens}`,
+      )
+    }
+
     return content
   }
 

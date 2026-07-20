@@ -24,7 +24,13 @@ export const FeatureSchema = z
   .object({
     title: z.string().min(1),
     status: FeatureStatusSchema,
-    description: z.string().min(1),
+    // Nullable: a terse, tabular source entry (e.g. "Feature | Future
+    // phase" with no prose) legitimately has no descriptive sentence to
+    // extract. The model reporting null here is honest, not a failure —
+    // rejecting the whole batch over one such entry would be worse than
+    // rendering a deterministic fallback for it (see
+    // newsletter/builder.ts's featureToItem).
+    description: z.string().min(1).nullable(),
     businessBenefit: z.string().nullable(),
     userImpact: z.string().nullable(),
     configuration: z.string().nullable(),
@@ -32,6 +38,10 @@ export const FeatureSchema = z
     steps: z.array(z.string()),
     limitations: z.string().nullable(),
     rolloutNotes: z.string().nullable(),
+    // Structural nesting only (heading hierarchy), never a semantic/topical
+    // relatedness guess. null when the feature is top-level. See
+    // extractor.md's "parentTitle" section for the extraction rule.
+    parentTitle: z.string().nullable(),
     source: FeatureSourceSchema,
   })
   .strict()
@@ -40,6 +50,12 @@ export const FeatureExtractionSchema = z
   .object({
     documentTitle: z.string().nullable(),
     releaseName: z.string().nullable(),
+    // Document-level rationale fields — additive, same null-if-absent
+    // discipline as every other optional field in this schema. See
+    // extractor.md for extraction rules.
+    problemStatement: z.string().nullable(),
+    whyBuilt: z.string().nullable(),
+    releasePlan: z.array(z.string()),
     features: z.array(FeatureSchema),
     uiChanges: z.array(z.string()),
     enhancements: z.array(z.string()),
