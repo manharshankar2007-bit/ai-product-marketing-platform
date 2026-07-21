@@ -80,6 +80,49 @@ type UploadResponse = UploadSuccessResponse | UploadErrorResponse
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000"
 
+export interface NewsletterListItem {
+  id: string
+  sourceFile: string
+  documentTitle: string | null
+  newsletterType: string
+  createdAt: string
+  /** True when other saved runs share this exact sourceFile — a re-run, not a fresh document. */
+  isRerun: boolean
+  /** Total number of saved runs (including this one) sharing this sourceFile. */
+  totalRunsForFile: number
+}
+
+export interface NewsletterDetail {
+  id: string
+  sourceFile: string
+  documentTitle: string | null
+  newsletterType: string
+  createdAt: string
+  content: {
+    whatsNew: NewsletterJson | null
+    comingSoon: NewsletterJson | null
+  }
+  verification: {
+    whatsNew: VerificationReport | null
+    comingSoon: VerificationReport | null
+  }
+}
+
+/** Optional persistence — see backend/src/db/newsletterHistory.ts. If the database is unavailable, this simply fails like any other fetch; the upload flow never depends on it. */
+export async function listNewsletters(): Promise<NewsletterListItem[]> {
+  const res = await fetch(`${API_BASE_URL}/api/newsletters`)
+  if (!res.ok) throw new Error(`Failed to load saved newsletters (HTTP ${res.status}).`)
+  const body = (await res.json()) as { success: true; newsletters: NewsletterListItem[] }
+  return body.newsletters
+}
+
+export async function getNewsletterById(id: string): Promise<NewsletterDetail> {
+  const res = await fetch(`${API_BASE_URL}/api/newsletters/${id}`)
+  if (!res.ok) throw new Error(`Failed to load newsletter (HTTP ${res.status}).`)
+  const body = (await res.json()) as { success: true } & NewsletterDetail
+  return body
+}
+
 /**
  * Uploads a PDF to the backend and waits for the fully generated
  * newsletter. Uses XMLHttpRequest (rather than fetch) specifically because

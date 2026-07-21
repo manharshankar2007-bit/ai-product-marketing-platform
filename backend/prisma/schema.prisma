@@ -1,13 +1,29 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
 }
 
+// SQLite deliberately, not Postgres: zero external services, no server to
+// run, a single file on disk. Removes an entire class of "is Postgres
+// running" failure for a submission/demo context. Persistence is additive
+// and optional (see newsletterHistory.ts) — the pipeline runs identically
+// whether this file exists or not.
+// Prisma 7: connection URL is configured in prisma.config.ts (for
+// migrations) and via a driver adapter passed to the PrismaClient
+// constructor (for the running app) — no longer in this file at all.
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
+}
+
+model Newsletter {
+  id             String   @id @default(cuid())
+  sourceFile     String // original PDF filename
+  documentTitle  String?
+  newsletterType String // "whatsNew" | "comingSoon" | "mixed"
+  contentJson    String // the full structured newsletter JSON — { whatsNew, comingSoon }, same shape as the API response, so reopening feeds the existing editor directly
+  verification   String? // the verification report JSON, same shape
+  createdAt      DateTime @default(now())
 }

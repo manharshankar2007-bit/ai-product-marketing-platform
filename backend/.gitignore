@@ -5,5 +5,13 @@ dist
 
 /src/generated/prisma
 
+# SQLite database file and its sidecar files (WAL/journal) — data, not
+# schema. Migrations (prisma/migrations/) ARE committed; the .db file itself
+# never is.
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
 /uploads/*
 !/uploads/.gitkeep

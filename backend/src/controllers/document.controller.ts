@@ -12,6 +12,7 @@ import type { NewsletterBuilderOutput } from "../newsletter/types"
 import { prepareWriterPrompt } from "../writer/writerEngine"
 import { WriterProvider } from "../writer/writerProvider"
 import { verifyNewsletter } from "../verifier/newsletterVerifier"
+import { saveNewsletter } from "../db/newsletterHistory"
 
 /**
  * Slices a "mixed" Builder output down to just its What's New content, so
@@ -108,6 +109,20 @@ export async function uploadDocument(
       comingSoonResult && comingSoonVerification
         ? { newsletter: comingSoonResult.newsletter, metadata: comingSoonResult.metadata, verification: comingSoonVerification }
         : null
+
+    // Persistence is additive/optional — saveNewsletter never throws (see
+    // db/newsletterHistory.ts), so a broken or missing database can never
+    // fail a generation that already succeeded. Awaited (not
+    // fire-and-forget) only so its own warning log lands before the
+    // response, not because the response depends on it succeeding.
+    await saveNewsletter({
+      sourceFile: req.file.originalname,
+      documentTitle: builderOutput.metadata.documentTitle,
+      whatsNew: whatsNew?.newsletter ?? null,
+      comingSoon: comingSoon?.newsletter ?? null,
+      whatsNewVerification: whatsNew?.verification ?? null,
+      comingSoonVerification: comingSoon?.verification ?? null,
+    })
 
     res.status(201).json({
       success: true,

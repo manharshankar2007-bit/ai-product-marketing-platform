@@ -18,4 +18,9 @@ export const env = {
   // Tokens reserved for the model's JSON response; subtracted from the
   // context window when checking whether the input document fits.
   groqMaxOutputTokens: Number(process.env.GROQ_MAX_OUTPUT_TOKENS) || 8_000,
+  // Persistence is additive/optional (see db/newsletterHistory.ts) — this
+  // default lets the app start and the pipeline run identically even with
+  // no .env at all; any real connection failure is caught at the point of
+  // use, never here.
+  databaseUrl: process.env.DATABASE_URL || "file:./dev.db",
 }
