@@ -196,6 +196,13 @@ it. A more specific, conflicting statement inside an individual feature's
 own text, or a differently-labeled section (such as "Future Scope"), still
 overrides this document-level default for that specific feature.
 
+**Document metadata:** a rollout-stage marker in a Jira link, release
+header, or status badge is document-level evidence, same as a phase
+statement. LIVE/RELEASED/GA/SHIPPED/IN SCOPE/IN SCOPE REVIEW/IN
+PROGRESS/BETA/PHASE 1 → in_progress for every feature not under Future
+Scope; Future Scope features stay planned. No marker, no per-feature
+language → null.
+
 **When the introduction contains BOTH a current-scope statement and a
 forward-looking heading, the current-scope statement wins as the
 document-level default.** Introductions commonly contain two different
