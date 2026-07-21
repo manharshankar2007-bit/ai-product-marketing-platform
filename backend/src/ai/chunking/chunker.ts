@@ -1,13 +1,6 @@
 import { countTokens } from "./tokenizer"
 import { SAFETY_MARGIN_TOKENS, TPM_LIMIT } from "./router"
-import {
-  ChunkTooLargeError,
-  PhaseFramingNotFoundError,
-  type ChunkPlan,
-  type DocumentChunk,
-  type DocumentSection,
-  type LosslessCoverageResult,
-} from "./types"
+import { ChunkTooLargeError, type ChunkPlan, type DocumentChunk, type DocumentSection, type LosslessCoverageResult } from "./types"
 
 // Mirrors the heading pattern in ../futureScopePass.ts
 // (isolateFutureScopeSection). Deliberately NOT imported from there —
@@ -159,9 +152,18 @@ export function locatePhaseFramingStatement(mainText: string): string | null {
   return statement.length > 0 ? statement : null
 }
 
+/**
+ * The phase-framing block is included only when a statement was actually
+ * located in the source — never synthesized. Its absence is a normal,
+ * valid case (most PRDs don't use this exact phrasing), not a degraded
+ * one; the header is simply three lines shorter, and status detection
+ * falls back to per-section/per-feature evidence (extractor.md already
+ * supports this — that's the same fallback a single, unchunked document
+ * with no such statement would use).
+ */
 function buildContextHeader(
   documentTitle: string | null,
-  phaseFramingStatement: string,
+  phaseFramingStatement: string | null,
   sectionLabels: string[],
   chunkIndex: number,
   totalChunks: number,
@@ -170,11 +172,14 @@ function buildContextHeader(
     `[Document: ${documentTitle ?? "(untitled)"}]`,
     `[This is chunk ${chunkIndex + 1} of ${totalChunks} from a larger document.]`,
     `[This excerpt covers: ${sectionLabels.join("; ")}]`,
-    "[Document-level phase framing — applies to every feature below unless a more specific statement says otherwise:]",
-    phaseFramingStatement,
-    "[Extract only what is explicitly stated in THIS excerpt.]",
-    "",
   ]
+  if (phaseFramingStatement !== null) {
+    lines.push(
+      "[Document-level phase framing — applies to every feature below unless a more specific statement says otherwise:]",
+      phaseFramingStatement,
+    )
+  }
+  lines.push("[Extract only what is explicitly stated in THIS excerpt.]", "")
   return lines.join("\n")
 }
 
@@ -190,9 +195,19 @@ function extractDocumentTitle(cleanText: string): string | null {
  * "Flow N" / "Section N" boundaries, and greedily packs consecutive
  * sections into chunks up to the runtime content budget. Never splits a
  * single section across chunks; throws ChunkTooLargeError instead of
- * silently hard-splitting one that alone exceeds the budget. Throws
- * PhaseFramingNotFoundError instead of proceeding without the
- * document-level phase-framing statement Bug 1 depends on.
+ * silently hard-splitting one that alone exceeds the budget.
+ *
+ * Document-level phase framing (Bug 1) is used when present, carried
+ * verbatim into every chunk's header — but its absence is a normal, valid
+ * case, not an error: most real PRDs don't use the exact "Scope for This
+ * Phase" phrasing this pattern looks for (that phrasing was specific to
+ * one document family). Proceeding without it was previously a hard
+ * failure (PhaseFramingNotFoundError) that broke chunking for any other
+ * document shape entirely — status detection still works without it via
+ * extractor.md's own per-section/per-feature fallback rules, the same
+ * ones a single-pass (unchunked) document with no such statement already
+ * relies on. Never synthesized either way — "use it if present, omit if
+ * absent," never "invent one."
  *
  * CHANGE 2: uses CHUNKED_PATH_MAX_OUTPUT_TOKENS (1,200), a separate
  * reserve from the global GROQ_MAX_OUTPUT_TOKENS (2,500, sized for a
@@ -218,9 +233,11 @@ export function planChunks(
 
   const phaseFramingStatement = locatePhaseFramingStatement(mainText)
   if (phaseFramingStatement === null) {
-    throw new PhaseFramingNotFoundError()
+    console.log(
+      "[chunker] no document-level phase framing found — proceeding without it; status falls back to per-section evidence.",
+    )
   }
-  const phaseFramingTokens = countTokens(phaseFramingStatement)
+  const phaseFramingTokens = phaseFramingStatement !== null ? countTokens(phaseFramingStatement) : 0
 
   // CHANGE 3: the content budget used for PACKING (compared against each
   // section's own token count, header excluded) is separate from a

@@ -65,8 +65,15 @@ export interface DocumentChunk {
 
 export interface ChunkPlan {
   documentTitle: string | null
-  /** Located verbatim from the source, carried into every chunk's header unchanged. */
-  phaseFramingStatement: string
+  /**
+   * Located verbatim from the source, carried into every chunk's header
+   * unchanged, when present. Absence is a normal, valid case — most PRDs
+   * don't use this exact "Scope for This Phase" phrasing — so this is
+   * `null` rather than required. Never synthesized when absent; status
+   * detection falls back to per-section/per-feature evidence in that
+   * case (see extractor.md's own status rules, which already support this).
+   */
+  phaseFramingStatement: string | null
   phaseFramingTokens: number
   chunks: DocumentChunk[]
   /** True when the Future Scope section was found and excluded from all chunks. */
