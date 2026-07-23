@@ -11,6 +11,15 @@ export const env = {
   maxUploadSizeBytes: 20 * 1024 * 1024,
   groqApiKey: process.env.GROQ_API_KEY || "",
   groqModel: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
+  // Provider swap only — see src/config/llmProvider.ts. Default "groq" means
+  // an unset LLM_PROVIDER (or any value other than exactly "ollama") behaves
+  // byte-identically to before this variable existed.
+  llmProvider: (process.env.LLM_PROVIDER === "ollama" ? "ollama" : "groq") as "groq" | "ollama",
+  ollamaBaseUrl: process.env.OLLAMA_BASE_URL || "http://localhost:11434/v1",
+  ollamaModel: process.env.OLLAMA_MODEL || "qwen2.5:14b",
+  // Ollama's OpenAI-compatible endpoint doesn't validate this — any
+  // placeholder string works. Only ever read when llmProvider is "ollama".
+  ollamaApiKey: process.env.OLLAMA_API_KEY || "ollama-local-no-key-needed",
   // Approximate context window (in tokens) of the configured model. This is
   // intentionally configurable rather than looked up from a hardcoded
   // model-name table, since GROQ_MODEL can be changed at any time.

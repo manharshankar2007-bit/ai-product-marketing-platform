@@ -1,6 +1,9 @@
 import Groq from "groq-sdk"
-import { env } from "../config/env"
+import { getActiveLlmConfig } from "../config/llmProvider"
+import { OllamaChatClient, type ChatCompletionLike } from "../config/ollamaClient"
 import { GroqProviderError } from "../ai/errors"
+import { extractJsonObjectText } from "../ai/jsonExtract"
+import { MODEL_NEWSLETTER_JSON_SCHEMA } from "../ai/jsonSchemas"
 import type { NewsletterBuilderOutput, NewsletterType } from "../newsletter/types"
 import type { WriterEngineOutput } from "./types"
 import { ModelNewsletterJsonSchema, type ModelNewsletterJson, type NewsletterJson } from "./newsletterOutput.schema"
@@ -196,6 +199,19 @@ export function findItemCountViolations(newsletter: ModelNewsletterJson): string
 }
 
 /**
+ * Builder gave the Writer real feature titles to work with, but the model
+ * returned zero items — a genuine generation failure (the section would
+ * render as an empty heading with nothing under it), not a legitimate "no
+ * content" case the way an empty `meansToYou` can be. Worth a retry rather
+ * than silently accepting it, same as the other rejection reasons below.
+ */
+export function findEmptyItemsViolation(newsletter: ModelNewsletterJson, featureTitles: string[]): string[] {
+  return newsletter.items.length === 0 && featureTitles.length > 0
+    ? [`items is empty despite ${featureTitles.length} feature(s) being available to write about.`]
+    : []
+}
+
+/**
  * The single navigation path Slot 4 surfaces — the first non-empty
  * navigationPath found (in document order) among the features relevant
  * to this newsletter's type. This becomes the `navigation` field verbatim
@@ -236,15 +252,15 @@ interface ParsedModelJson {
 
 /**
  * Defensively parses the model's response into ModelNewsletterJsonSchema.
- * response_format: json_object should mean no fences ever appear, but
- * strips them if present anyway rather than trusting that unconditionally.
+ * response_format: json_object should mean no fences or prose ever appear,
+ * but extractJsonObjectText strips them if present anyway rather than
+ * trusting that unconditionally — additive tolerance only: for an
+ * already-clean `{...}` response it's a no-op, so this doesn't change
+ * behavior on Groq, it just adds tolerance for a less strictly-constrained
+ * local model.
  */
 function parseModelJson(rawText: string): ParsedModelJson {
-  const stripped = rawText
-    .trim()
-    .replace(/^```(?:json)?\s*/i, "")
-    .replace(/```\s*$/i, "")
-    .trim()
+  const stripped = extractJsonObjectText(rawText)
 
   if (stripped.length === 0) {
     return { data: null, error: "Output is empty." }
@@ -296,16 +312,21 @@ export function findRejectionReasons(newsletter: ModelNewsletterJson): string[] 
  * validation) is duplicated here, since the Writer's job is different.
  */
 export class WriterProvider {
-  private readonly client: Groq
+  private readonly client: Groq | OllamaChatClient
+  private readonly isOllama: boolean
   private readonly model: string
 
   constructor() {
-    if (!env.groqApiKey) {
+    const config = getActiveLlmConfig()
+    if (!config.apiKey) {
       throw new GroqProviderError("GROQ_API_KEY is not configured")
     }
 
-    this.client = new Groq({ apiKey: env.groqApiKey })
-    this.model = env.groqModel
+    this.isOllama = config.isOllama
+    this.client = config.isOllama
+      ? new OllamaChatClient(config.baseURL!, config.timeout!)
+      : new Groq({ apiKey: config.apiKey, baseURL: config.baseURL, timeout: config.timeout })
+    this.model = config.model
   }
 
   async generateNewsletter(input: Pick<WriterEngineOutput, "prompt" | "metadata">): Promise<GenerateNewsletterResult> {
@@ -336,7 +357,11 @@ export class WriterProvider {
         continue
       }
 
-      const rejectionReasons = [...findRejectionReasons(modelJson), ...findItemCountViolations(modelJson)]
+      const rejectionReasons = [
+        ...findRejectionReasons(modelJson),
+        ...findItemCountViolations(modelJson),
+        ...findEmptyItemsViolation(modelJson, featureTitles),
+      ]
 
       if (rejectionReasons.length === 0) {
         const navigation = builderOutput ? (getPrimaryNavigationPath(builderOutput) ?? []) : []
@@ -368,13 +393,14 @@ export class WriterProvider {
     throw new NewsletterGenerationError(attemptFailures)
   }
 
-  private async requestCompletion(prompt: string): Promise<Groq.Chat.Completions.ChatCompletion> {
+  private async requestCompletion(prompt: string): Promise<ChatCompletionLike> {
     try {
       return await this.client.chat.completions.create({
         model: this.model,
         temperature: TEMPERATURE,
         response_format: { type: "json_object" },
-        messages: [{ role: "user", content: prompt }],
+        ...(this.isOllama ? { format: MODEL_NEWSLETTER_JSON_SCHEMA } : {}),
+        messages: [{ role: "user" as const, content: prompt }],
       })
     } catch (error) {
       throw new GroqProviderError(

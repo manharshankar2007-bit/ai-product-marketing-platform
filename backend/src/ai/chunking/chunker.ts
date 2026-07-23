@@ -60,31 +60,38 @@ const INTRO_HEADING_STOP_PATTERNS: RegExp[] = [
  * Chunked-path-only output reserve — see planChunks doc comment. Global
  * GROQ_MAX_OUTPUT_TOKENS is untouched.
  *
- * Raised from the original 1,200 to 2,000 after two separate live
- * observations: a Step 2 smoke-test chunk used 1,128/1,200 (94%) for 9
- * features, and a live chunk on a real 10-page document actually hit
- * finish_reason: "length" and was correctly refused rather than merged
- * truncated.
- *
- * A live chunk on "Use Case 4 — Supplier View" (2,150 content tokens, no
- * further heading-level sub-split available) then hit finish_reason:
- * "length" at 2,000 and was correctly refused. Deliberately NOT raised
- * further: doing so shrinks the content budget (same TPM_LIMIT pool),
- * which increases chunk count and total run cost against the 100K TPD
- * cap — testing capacity is the scarcer resource, and the achievable
- * raise (~2,130, the ceiling before Use Case 4 becomes un-chunkable) was
- * still unverified as sufficient and only bought a 10-token margin. Use
- * Case 4 truncating at 2,000 is accepted as a known limitation instead —
- * the finish_reason: "length" guard in chunkedExtraction.ts catches it
- * loudly and refuses to merge a truncated extraction, so the failure
- * mode is safe, just not yet fixed. Revisit only via either a genuine
- * further reduction in extractor.md's size or a finer heading-boundary
- * split of Use Case 4 (chunker.ts pattern change, not a constant tweak).
+ * Raised from 2,000 to 3,500 across two rounds of extractor.md shrinking
+ * (first the per-feature status-inference prose, now the Worked Example
+ * and other redundant sections — see extractor.md's own history). Each
+ * round freed real content budget, which the packer spends on fewer,
+ * larger chunks (SPOT Shifts: 5 → 4 → 3) — but larger chunks hold more
+ * features per call, raising how often a chunk needs more than the old
+ * 2,000-token output reserve (confirmed live via repeated
+ * ChunkTruncatedError on different chunks — a density effect from
+ * fewer/bigger chunks, not a single hard case). 3,500 was chosen by
+ * comparing 3,000/3,500/4,000 against a live SPOT Shifts dry run:
+ * 3,500 gave the best minimum rate-limit margin across all chunks
+ * (379 tokens, vs. 24 at 3,000 and 127 at 4,000) while still holding at
+ * 3 chunks total.
  */
-export const CHUNKED_PATH_MAX_OUTPUT_TOKENS = 2_000
+export const CHUNKED_PATH_MAX_OUTPUT_TOKENS = 3_500
 
-/** Small, roughly-constant reserve for the header's boilerplate lines (title, chunk-count, section list, instruction) — NOT the phase-framing text, which is measured exactly. */
-const HEADER_BOILERPLATE_RESERVE_TOKENS = 100
+/**
+ * Reserve for the header's boilerplate lines (title, chunk-count, section
+ * list, instruction) — NOT the phase-framing text, which is measured
+ * exactly. This is NOT actually constant: the "[This excerpt covers: ...]"
+ * line grows with how many section labels get packed into one chunk, so a
+ * chunk with several small sections has a measurably longer boilerplate
+ * portion than one with a single large section. Confirmed live on SPOT
+ * Shifts: real boilerplate-only token counts ranged 80-115 against a
+ * previous 100-token reserve, and a chunk at 115 pushed its real
+ * estimatedTotalCallTokens 3 tokens past the rate limiter's own budget —
+ * a reproducible crash (RateLimiter.admitAt refuses to wait forever for a
+ * call that can never fit, by design), not sampling variance. 150 gives
+ * real margin above the worst case observed rather than sitting right at
+ * the edge of it again.
+ */
+const HEADER_BOILERPLATE_RESERVE_TOKENS = 150
 
 const LEADING_SECTION_LABEL = "(document introduction)"
 

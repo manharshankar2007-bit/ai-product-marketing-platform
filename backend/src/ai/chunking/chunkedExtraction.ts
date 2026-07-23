@@ -1,9 +1,15 @@
 import fs from "node:fs"
 import path from "node:path"
 import Groq from "groq-sdk"
-import { env } from "../../config/env"
+import { getActiveLlmConfig } from "../../config/llmProvider"
+import { OllamaChatClient, type ChatCompletionLike } from "../../config/ollamaClient"
 import { GroqProviderError, ExtractionValidationError } from "../errors"
 import { FeatureExtractionSchema, type FeatureExtraction } from "../schemas/featureExtraction.schema"
+import { extractJsonObjectText } from "../jsonExtract"
+import { normalizeFeatureStatuses } from "../statusNormalizer"
+import { fillMissingExtractionDefaults } from "../extractionDefaults"
+import { FEATURE_EXTRACTION_JSON_SCHEMA } from "../jsonSchemas"
+import { pipelineDebugger, extractFeaturesArray } from "../../debug/pipelineDebugger"
 import type { DocumentChunk } from "./types"
 
 // Mirrors groqProvider.ts's own path computation (backend/src/ai/providers/
@@ -49,36 +55,64 @@ export interface ChunkCallResult {
  * truncated extraction, exactly as required.
  */
 export async function extractChunkLive(chunk: DocumentChunk, outputReserveTokens: number): Promise<ChunkCallResult> {
-  if (!env.groqApiKey) {
+  const config = getActiveLlmConfig()
+  if (!config.apiKey) {
     throw new GroqProviderError("GROQ_API_KEY is not configured")
   }
 
-  const client = new Groq({ apiKey: env.groqApiKey })
   const systemPrompt = loadExtractorPrompt()
+  const requestParams = {
+    model: config.model,
+    temperature: 0.2,
+    max_tokens: outputReserveTokens,
+    response_format: { type: "json_object" as const },
+    messages: [
+      { role: "system" as const, content: systemPrompt },
+      { role: "user" as const, content: chunk.text },
+    ],
+  }
 
-  let completion: Groq.Chat.Completions.ChatCompletion
-  let responseHeaders: Headers
+  let completion: ChatCompletionLike
+  // Rate-limit headers only exist on Groq's hosted API — there's nothing to
+  // read for a local Ollama call (no TPM/TPD), and OllamaChatClient doesn't
+  // implement .withResponse(), so that path is skipped entirely rather than
+  // faked.
+  let responseHeaders: Headers | null = null
 
+  const llmRequestStartedAt = Date.now()
   try {
-    const result = await client.chat.completions
-      .create({
-        model: env.groqModel,
-        temperature: 0.2,
-        max_tokens: outputReserveTokens,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: chunk.text },
-        ],
-      })
-      .withResponse()
-    completion = result.data
-    responseHeaders = result.response.headers
+    if (config.isOllama) {
+      const client = new OllamaChatClient(config.baseURL!, config.timeout!)
+      // format is Ollama-only (native /api/chat structured-output
+      // constraint, see jsonSchemas.ts) — added here, not in the shared
+      // requestParams above, so the Groq branch below never sees it.
+      completion = await client.chat.completions.create({ ...requestParams, format: FEATURE_EXTRACTION_JSON_SCHEMA })
+    } else {
+      const client = new Groq({ apiKey: config.apiKey, baseURL: config.baseURL, timeout: config.timeout })
+      const result = await client.chat.completions.create(requestParams).withResponse()
+      completion = result.data
+      responseHeaders = result.response.headers
+    }
+    pipelineDebugger.record({
+      stage: "LLM Request",
+      startedAt: llmRequestStartedAt,
+      endedAt: Date.now(),
+      inputCount: 1,
+      outputCount: 1,
+      firstSample: `chunk ${chunk.index}, model=${config.model}`,
+    })
   } catch (error) {
-    throw new GroqProviderError(
-      `Chunk ${chunk.index}: ` + (error instanceof Error ? error.message : "Unknown error calling the Groq API"),
-      error,
-    )
+    const message = error instanceof Error ? error.message : "Unknown error calling the Groq API"
+    pipelineDebugger.record({
+      stage: "LLM Request",
+      startedAt: llmRequestStartedAt,
+      endedAt: Date.now(),
+      inputCount: 1,
+      outputCount: 0,
+      firstSample: `chunk ${chunk.index}, model=${config.model}`,
+      errors: [message],
+    })
+    throw new GroqProviderError(`Chunk ${chunk.index}: ` + message, error)
   }
 
   // Logged unconditionally, immediately after a successful API response —
@@ -97,28 +131,143 @@ export async function extractChunkLive(chunk: DocumentChunk, outputReserveTokens
   const finishReason = choice?.finish_reason ?? "unknown"
   const rawContent = choice?.message?.content ?? ""
 
+  const rawResponseTimestamp = Date.now()
   if (finishReason === "length") {
+    pipelineDebugger.record({
+      stage: "Raw LLM Response",
+      startedAt: rawResponseTimestamp,
+      endedAt: rawResponseTimestamp,
+      inputCount: 1,
+      outputCount: 0,
+      firstSample: rawContent,
+      errors: [`chunk ${chunk.index}: truncated (finish_reason: "length")`],
+    })
     throw new ChunkTruncatedError(chunk.index, finishReason)
   }
 
   if (!rawContent) {
+    pipelineDebugger.record({
+      stage: "Raw LLM Response",
+      startedAt: rawResponseTimestamp,
+      endedAt: rawResponseTimestamp,
+      inputCount: 1,
+      outputCount: 0,
+      errors: [`chunk ${chunk.index}: response did not contain any content`],
+    })
     throw new GroqProviderError(`Chunk ${chunk.index}: Groq response did not contain any content`)
   }
+  pipelineDebugger.record({
+    stage: "Raw LLM Response",
+    startedAt: rawResponseTimestamp,
+    endedAt: rawResponseTimestamp,
+    inputCount: 1,
+    outputCount: 1,
+    firstSample: rawContent,
+  })
 
+  console.log("==========================")
+  console.log("RAW MODEL RESPONSE")
+  console.log("==========================")
+  console.log(rawContent)
+
+  const jsonParsingStartedAt = Date.now()
   let parsedJson: unknown
   try {
-    parsedJson = JSON.parse(rawContent)
+    parsedJson = JSON.parse(extractJsonObjectText(rawContent))
   } catch (error) {
+    pipelineDebugger.record({
+      stage: "JSON Parsing",
+      startedAt: jsonParsingStartedAt,
+      endedAt: Date.now(),
+      inputCount: 1,
+      outputCount: 0,
+      firstSample: rawContent,
+      errors: [error instanceof Error ? error.message : "Groq response was not valid JSON"],
+    })
     throw new GroqProviderError(`Chunk ${chunk.index}: Groq response was not valid JSON`, error)
   }
 
-  const validation = FeatureExtractionSchema.safeParse(parsedJson)
-  if (!validation.success) {
-    throw new ExtractionValidationError(validation.error)
+  const parsedFeatures = extractFeaturesArray(parsedJson)
+  pipelineDebugger.record({
+    stage: "JSON Parsing",
+    startedAt: jsonParsingStartedAt,
+    endedAt: Date.now(),
+    inputCount: 1,
+    outputCount: parsedFeatures.length,
+    firstSample: parsedFeatures[0],
+  })
+  console.log("==========================")
+  console.log("PARSED JSON")
+  console.log("==========================")
+  console.log(`Number of features: ${parsedFeatures.length}`)
+  for (const feature of parsedFeatures) {
+    const record = feature as Record<string, unknown>
+    console.log(`Title: ${String(record.title ?? "(missing)")}`)
+    console.log(`Raw status: ${"status" in record ? JSON.stringify(record.status) : "(missing)"}`)
   }
 
+  const defaultsFillStartedAt = Date.now()
+  const filled = fillMissingExtractionDefaults(parsedJson)
+  const filledFeatures = extractFeaturesArray(filled)
+  pipelineDebugger.record({
+    stage: "Defaults Fill",
+    startedAt: defaultsFillStartedAt,
+    endedAt: Date.now(),
+    inputCount: parsedFeatures.length,
+    outputCount: filledFeatures.length,
+    firstSample: filledFeatures[0],
+  })
+
+  const statusNormalizationStartedAt = Date.now()
+  const normalized = normalizeFeatureStatuses(filled)
+  const normalizedFeatures = extractFeaturesArray(normalized)
+  pipelineDebugger.record({
+    stage: "Status Normalization",
+    startedAt: statusNormalizationStartedAt,
+    endedAt: Date.now(),
+    inputCount: filledFeatures.length,
+    outputCount: normalizedFeatures.length,
+    firstSample: normalizedFeatures[0],
+  })
+  console.log("==========================")
+  console.log("AFTER NORMALIZATION")
+  console.log("==========================")
+  for (const feature of normalizedFeatures) {
+    const record = feature as Record<string, unknown>
+    console.log(`Title: ${String(record.title ?? "(missing)")}`)
+    console.log(`Normalized status: ${"status" in record ? JSON.stringify(record.status) : "(missing)"}`)
+  }
+
+  const zodValidationStartedAt = Date.now()
+  const validation = FeatureExtractionSchema.safeParse(normalized)
+  if (!validation.success) {
+    pipelineDebugger.record({
+      stage: "Zod Validation",
+      startedAt: zodValidationStartedAt,
+      endedAt: Date.now(),
+      inputCount: normalizedFeatures.length,
+      outputCount: 0,
+      firstSample: normalizedFeatures[0],
+      validationFailures: [validation.error.message],
+    })
+    throw new ExtractionValidationError(validation.error)
+  }
+  pipelineDebugger.record({
+    stage: "Zod Validation",
+    startedAt: zodValidationStartedAt,
+    endedAt: Date.now(),
+    inputCount: normalizedFeatures.length,
+    outputCount: validation.data.features.length,
+    firstSample: validation.data.features[0],
+  })
+
+  console.log("==========================")
+  console.log("AFTER VALIDATION")
+  console.log("==========================")
+  console.log(`Number of validated features: ${validation.data.features.length}`)
+
   const rateLimitHeaders: Record<string, string> = {}
-  responseHeaders.forEach((value, key) => {
+  responseHeaders?.forEach((value, key) => {
     if (key.toLowerCase().includes("ratelimit")) rateLimitHeaders[key] = value
   })
 

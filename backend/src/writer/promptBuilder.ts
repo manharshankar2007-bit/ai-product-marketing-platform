@@ -1,5 +1,40 @@
-import type { NewsletterType } from "../newsletter/types"
+import type { NewsletterBuilderOutput, NewsletterFeatureItem, NewsletterType } from "../newsletter/types"
 import type { BuildPromptParams, BuildPromptResult } from "./types"
+
+/**
+ * Fields the Writer actually needs. `title`/`description`/`businessBenefit`/
+ * `userImpact`/`status` feed the model's own prose; `navigationPath` must
+ * stay because writerProvider.ts re-parses this EXACT serialized JSON back
+ * out of the prompt string (extractBuilderOutputFromPrompt) to power
+ * getPrimaryNavigationPath — Slot 4's navigation line is code-assembled
+ * from that re-parsed field, not written by the model, so it can't be
+ * dropped the way it safely is from the Verifier's payload (which passes a
+ * real object, never a re-parsed prompt string). `configuration`, `steps`,
+ * `limitations`, `rolloutNotes`, `parentTitle`, `source`, and `kind` are
+ * never referenced by any slot instruction or by any downstream re-parse —
+ * pure payload weight that scales with feature count for no benefit.
+ */
+function writerFacingFeature(item: NewsletterFeatureItem) {
+  return {
+    title: item.title,
+    status: item.status,
+    description: item.description,
+    businessBenefit: item.businessBenefit,
+    userImpact: item.userImpact,
+    navigationPath: item.navigationPath,
+  }
+}
+
+/** Same trim applied to every feature bucket; `warnings` is Builder's own diagnostic info and is never needed by the model's writing task. */
+function writerFacingBuilderOutput(builderOutput: NewsletterBuilderOutput) {
+  return {
+    ...builderOutput,
+    whatsNew: builderOutput.whatsNew.map(writerFacingFeature),
+    comingSoon: builderOutput.comingSoon.map(writerFacingFeature),
+    unclassified: builderOutput.unclassified.map(writerFacingFeature),
+    warnings: undefined,
+  }
+}
 
 /**
  * Bumped whenever the slot template or rules change — replaces the old
@@ -68,24 +103,34 @@ function buildSlotInstructions(newsletterType: NewsletterType): string {
     "<Benefit> must both come from the JSON's feature titles/descriptions.",
     "",
     "intro",
-    `2-3 sentences, second person, ${tense} tense: the operational problem`,
-    "this addresses, then what's shipping. Draw only from the JSON's feature",
-    "descriptions and businessBenefit fields.",
+    `2-3 sentences, second person, ${tense} tense. The operational-problem`,
+    "sentence(s) must come ONLY from the JSON's top-level metadata.problemStatement",
+    "field, used verbatim-in-substance — rephrase into second person, but never",
+    "invent a different problem, domain, scenario, or specific detail beyond",
+    "what that field states. If metadata.problemStatement is null or absent,",
+    "OMIT the problem-framing sentence entirely and open directly with what's",
+    "shipping instead — do not substitute a plausible-sounding generic problem",
+    "(e.g. dispatcher scheduling, vehicle availability, double-booking — or any",
+    "other invented operational scenario) when the field is empty. The",
+    "what's-shipping portion draws only from the JSON's feature descriptions",
+    "and businessBenefit fields, as before.",
     "",
-    'whyBuilt — DEFAULT ASSUMPTION: this is null. The current schema usually',
-    "carries no dedicated rationale field, so the default case is the common",
-    "case, not the exception.",
+    "whyBuilt — first choice: if the JSON's top-level metadata.whyBuilt field",
+    "is non-null, use its content verbatim-in-substance (2-3 sentences) —",
+    "never paraphrase it into a different scenario, domain, or invented",
+    "detail beyond what that field states.",
     "",
-    'ONLY IF you can point to a specific JSON field that states WHY this',
-    "release exists (as opposed to what it does — a description of what a",
-    "feature does is NOT a rationale for the release), set whyBuilt to 2-3",
-    "sentences using that field.",
-    "",
-    'If you cannot point to such a field: whyBuilt MUST be null. Do not',
-    'write a sentence stating that no rationale was provided, found, or',
-    "specified — a string like that is itself a violation, exactly as much",
-    "as inventing a rationale would be. Both are writing about a field that",
-    "isn't there. The only correct value is null.",
+    "If metadata.whyBuilt is null, SYNTHESIZE a rationale by reasoning over",
+    "metadata.problemStatement and the features' own description/",
+    "businessBenefit fields — connect facts already stated in the JSON into",
+    "why this was likely built (e.g. \"this closes the gap described in the",
+    "problem statement\"). Synthesis means recombining what the JSON already",
+    "says, in your own words — it does NOT mean introducing a new entity,",
+    "team, role, workflow, or domain that isn't named anywhere in the JSON.",
+    "If problemStatement is also null and no feature has any",
+    "businessBenefit anywhere, there is nothing to reason from — whyBuilt is",
+    "null. Do not write a sentence stating that no rationale was found —",
+    "that is itself a violation, exactly as much as inventing one is.",
     "",
     "items",
     "HARD LIMIT: 3-4 items MAXIMUM. This is not a target, it is a ceiling —",
@@ -125,9 +170,15 @@ function buildSlotInstructions(newsletterType: NewsletterType): string {
     "benefit to a colleague.",
     "",
     "meansToYou",
-    "2-6 short strings, one per array entry. Source ONLY from the JSON's",
-    "businessBenefit and userImpact fields — nowhere else. If neither field",
-    "has any content anywhere in the JSON, meansToYou is an empty array.",
+    "2-6 short strings, one per array entry. First choice: the JSON's",
+    "businessBenefit and userImpact fields. If neither exists for a feature",
+    "you're including, you may synthesize a benefit by reasoning over that",
+    "feature's own description — state the practical upside of what the",
+    "description already says the feature does, without inventing a new",
+    "capability, number, or outcome the description doesn't support. If a",
+    "feature's description gives you nothing to reason a benefit from",
+    "either, skip it rather than padding with a generic line. meansToYou is",
+    "an empty array only if this yields nothing across every feature.",
   ].join("\n")
 }
 
@@ -141,7 +192,7 @@ export function buildWriterPrompt(params: BuildPromptParams): BuildPromptResult 
 
   const sections = [
     buildSlotInstructions(builderOutput.newsletterType),
-    `## Structured Newsletter Builder Output\n\nThis is the complete, validated source of truth. Do not add, remove, or infer anything beyond it.\n\n\`\`\`json\n${JSON.stringify(builderOutput, null, 2)}\n\`\`\``,
+    `## Structured Newsletter Builder Output\n\nThis is the complete, validated source of truth. Do not add, remove, or infer anything beyond it.\n\n\`\`\`json\n${JSON.stringify(writerFacingBuilderOutput(builderOutput), null, 2)}\n\`\`\``,
   ]
 
   return {

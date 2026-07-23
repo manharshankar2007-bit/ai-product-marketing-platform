@@ -129,6 +129,16 @@ export interface NewsletterDetail {
   verification: StoredNewslettersVerification
 }
 
+/** Returns false (not an error) if the id was already gone — deleting a newsletter that no longer exists isn't a failure worth surfacing differently from a successful delete. */
+export async function deleteNewsletter(id: string): Promise<boolean> {
+  try {
+    await prisma.newsletter.delete({ where: { id } })
+    return true
+  } catch {
+    return false
+  }
+}
+
 export async function getNewsletterById(id: string): Promise<NewsletterDetail | null> {
   const row = await prisma.newsletter.findUnique({ where: { id } })
   if (!row) return null

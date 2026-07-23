@@ -15,3 +15,7 @@ dist
 
 /uploads/*
 !/uploads/.gitkeep
+
+# Pipeline debug instrumentation output — a diagnostic artifact regenerated
+# on every run, not project state.
+/debug/*.json
