@@ -1,10 +1,8 @@
-import { useEffect, useState } from "react"
-import { Copy, Download, RotateCcw } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { NewsletterEditor } from "./NewsletterEditor"
-import { copyHtmlToClipboard, downloadHtml, type ExportSection } from "@/lib/newsletterExport"
-import type { NewsletterJson, NewsletterSection, UploadSuccessResponse, VerificationReport } from "@/lib/api"
+import { useState } from "react"
+import { AlertTriangle, RotateCcw } from "lucide-react"
+import NewsletterPreview from "./NewsletterPreview"
+import { renderStandaloneDocument, renderPlainText, type ExportSection } from "@/lib/newsletterExport"
+import type { NewsletterJson, UploadSuccessResponse, VerificationReport, WriterMetadata } from "@/lib/api"
 
 /**
  * Detect-and-report only — this never blocks anything, it's a status line.
@@ -17,156 +15,126 @@ function VerificationStatus({ verification }: { verification: VerificationReport
   const advisoryCount = verification.advisory.droppedFeatures.length + verification.advisory.ungroundedClaims.length
 
   if (verification.passed) {
-    return <p className="text-xs text-emerald-700">✓ Verified: all content grounded in source</p>
+    return (
+      <p className="flex items-center gap-1.5 text-xs font-bold uppercase text-emerald-700">
+        <span className="inline-block size-1.5 rounded-full bg-emerald-600" />
+        Verified: all content grounded in source
+      </p>
+    )
   }
 
   return (
-    <div className="text-xs text-amber-700">
-      <p>⚠ {fabricationIssues} possible fabrication{fabricationIssues === 1 ? "" : "s"} — review flagged items</p>
-      {advisoryCount > 0 && <p className="text-muted-foreground">{advisoryCount} advisory signal{advisoryCount === 1 ? "" : "s"}</p>}
-      {verification.check3Error && <p className="text-muted-foreground">Note: the AI grounding check did not complete ({verification.check3Error}).</p>}
-    </div>
-  )
-}
-
-function slugify(title: string): string {
-  return title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "newsletter"
-}
-
-function ExportButtons({ sections, documentTitle, filename }: { sections: ExportSection[]; documentTitle: string; filename: string }) {
-  const [copied, setCopied] = useState(false)
-
-  const handleCopy = async () => {
-    await copyHtmlToClipboard(sections)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
-  return (
-    <div className="flex gap-2">
-      <Button size="sm" variant="outline" onClick={() => downloadHtml(sections, documentTitle, filename)}>
-        <Download /> Download HTML
-      </Button>
-      <Button size="sm" variant="outline" onClick={handleCopy}>
-        <Copy /> {copied ? "Copied!" : "Copy HTML"}
-      </Button>
+    <div className="space-y-0.5 text-xs font-bold uppercase">
+      <p className="flex items-center gap-1.5 text-amber-700">
+        <AlertTriangle className="size-3.5" />
+        {fabricationIssues} possible fabrication{fabricationIssues === 1 ? "" : "s"} — review flagged items
+      </p>
+      {advisoryCount > 0 && <p className="text-gray-500">{advisoryCount} advisory signal{advisoryCount === 1 ? "" : "s"}</p>}
+      {verification.check3Error && (
+        <p className="text-gray-500">Note: the AI grounding check did not complete ({verification.check3Error}).</p>
+      )}
     </div>
   )
 }
 
 function NewsletterCard({
   title,
-  section,
-  draft,
+  newsletter,
+  metadata,
+  verification,
   onChange,
-  onReset,
 }: {
   title: string
-  section: NewsletterSection
-  draft: NewsletterJson
-  onChange: (newsletter: NewsletterJson) => void
-  onReset: () => void
+  newsletter: NewsletterJson
+  metadata: WriterMetadata
+  verification: VerificationReport
+  onChange: (updated: NewsletterJson) => void
 }) {
+  const exportSections: ExportSection[] = [{ newsletter, itemsHeading: title }]
+  const htmlCode = renderStandaloneDocument(exportSections, title)
+  const markdownCode = renderPlainText(exportSections)
+
   return (
-    <Card className="w-full max-w-2xl">
-      <CardHeader className="flex flex-row items-start justify-between gap-2">
+    <div className="w-full max-w-3xl">
+      <div className="mb-3 flex items-center justify-between gap-2">
         <div>
-          <CardTitle>{title}</CardTitle>
-          <CardDescription>generated in {(section.metadata.generationTimeMs / 1000).toFixed(1)}s</CardDescription>
+          <p className="font-display text-2xl font-black uppercase tracking-tight text-[#1A1A1A]">{title}</p>
+          <p className="font-mono text-[11px] font-bold uppercase tracking-wide text-gray-500">
+            Generated in {(metadata.generationTimeMs / 1000).toFixed(1)}s
+          </p>
           <div className="mt-1">
-            <VerificationStatus verification={section.verification} />
+            <VerificationStatus verification={verification} />
           </div>
         </div>
-        <Button variant="ghost" size="sm" onClick={onReset}>
-          <RotateCcw /> Reset to AI draft
-        </Button>
-      </CardHeader>
-      <CardContent>
-        <NewsletterEditor newsletter={draft} onChange={onChange} itemsHeading={title} />
-        {(section.metadata.possibleOmissions || section.metadata.missingSections.length > 0) && (
-          <div className="mt-3 space-y-1 rounded-md border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
-            {section.metadata.possibleOmissions && (
-              <p>Heads up: some extracted features may be missing from this draft &mdash; worth a quick review.</p>
-            )}
-            {section.metadata.missingSections.length > 0 && (
-              <p>Missing expected sections: {section.metadata.missingSections.join(", ")}</p>
-            )}
-          </div>
-        )}
-        <div className="mt-3">
-          <ExportButtons sections={[{ newsletter: draft, itemsHeading: title }]} documentTitle={title} filename={`${slugify(title)}.html`} />
+      </div>
+      <NewsletterPreview htmlCode={htmlCode} markdownCode={markdownCode} newsletter={newsletter} onNewsletterChange={onChange} />
+      {(metadata.possibleOmissions || metadata.missingSections.length > 0) && (
+        <div className="mt-3 space-y-1 border-2 border-black bg-[#F3F4F6] p-3 text-xs font-bold text-gray-700">
+          {metadata.possibleOmissions && (
+            <p>Heads up: some extracted features may be missing from this draft — worth a quick review.</p>
+          )}
+          {metadata.missingSections.length > 0 && <p>Missing expected sections: {metadata.missingSections.join(", ")}</p>}
         </div>
-      </CardContent>
-    </Card>
+      )}
+    </div>
   )
 }
 
 function NewsletterReview({ result }: { result: UploadSuccessResponse }) {
   const { whatsNew, comingSoon } = result.newsletters
-
-  const [whatsNewDraft, setWhatsNewDraft] = useState<NewsletterJson | null>(whatsNew?.newsletter ?? null)
-  const [comingSoonDraft, setComingSoonDraft] = useState<NewsletterJson | null>(comingSoon?.newsletter ?? null)
-
-  // Re-sync drafts whenever a new upload produces new AI output — draft
-  // state must never survive across a genuinely new result.
-  useEffect(() => {
-    setWhatsNewDraft(whatsNew?.newsletter ?? null)
-  }, [whatsNew])
-  useEffect(() => {
-    setComingSoonDraft(comingSoon?.newsletter ?? null)
-  }, [comingSoon])
+  // Local, editable copies of the generated content — edits here never touch
+  // the server; they only affect what this session previews/exports.
+  const [whatsNewJson, setWhatsNewJson] = useState<NewsletterJson | null>(whatsNew?.newsletter ?? null)
+  const [comingSoonJson, setComingSoonJson] = useState<NewsletterJson | null>(comingSoon?.newsletter ?? null)
 
   if (!whatsNew && !comingSoon) {
     return (
-      <Card className="w-full max-w-2xl">
-        <CardHeader>
-          <CardTitle>No Newsletter Generated</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            No shipped, in-progress, or planned features were found in this document.
-          </p>
-        </CardContent>
-      </Card>
+      <div className="flex w-full max-w-3xl items-center gap-3 border-4 border-black bg-white p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
+        <RotateCcw className="size-6 shrink-0 text-gray-400" />
+        <div>
+          <p className="font-display text-sm font-black uppercase text-[#1A1A1A]">No Newsletter Generated</p>
+          <p className="text-sm text-gray-600">No shipped, in-progress, or planned features were found in this document.</p>
+        </div>
+      </div>
     )
   }
 
   const combinedSections: ExportSection[] = [
-    ...(whatsNewDraft ? [{ newsletter: whatsNewDraft, itemsHeading: "What's New" }] : []),
-    ...(comingSoonDraft ? [{ newsletter: comingSoonDraft, itemsHeading: "Coming Soon" }] : []),
+    ...(whatsNewJson ? [{ newsletter: whatsNewJson, itemsHeading: "What's New" }] : []),
+    ...(comingSoonJson ? [{ newsletter: comingSoonJson, itemsHeading: "Coming Soon" }] : []),
   ]
   const isMixed = Boolean(whatsNew) && Boolean(comingSoon)
 
   return (
-    <div className="flex w-full max-w-2xl flex-col gap-6">
-      {whatsNew && whatsNewDraft && (
+    <div className="flex w-full max-w-3xl flex-col gap-8">
+      {whatsNew && whatsNewJson && (
         <NewsletterCard
           title="What's New"
-          section={whatsNew}
-          draft={whatsNewDraft}
-          onChange={setWhatsNewDraft}
-          onReset={() => setWhatsNewDraft(whatsNew.newsletter)}
+          newsletter={whatsNewJson}
+          metadata={whatsNew.metadata}
+          verification={whatsNew.verification}
+          onChange={setWhatsNewJson}
         />
       )}
-      {comingSoon && comingSoonDraft && (
+      {comingSoon && comingSoonJson && (
         <NewsletterCard
           title="Coming Soon"
-          section={comingSoon}
-          draft={comingSoonDraft}
-          onChange={setComingSoonDraft}
-          onReset={() => setComingSoonDraft(comingSoon.newsletter)}
+          newsletter={comingSoonJson}
+          metadata={comingSoon.metadata}
+          verification={comingSoon.verification}
+          onChange={setComingSoonJson}
         />
       )}
       {isMixed && (
-        <Card className="w-full max-w-2xl">
-          <CardHeader>
-            <CardTitle>Export Combined</CardTitle>
-            <CardDescription>Both newsletters as one document, clearly separated.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ExportButtons sections={combinedSections} documentTitle="Newsletter" filename="newsletter-combined.html" />
-          </CardContent>
-        </Card>
+        <div className="w-full max-w-3xl">
+          <p className="font-display mb-2 text-xs font-black uppercase tracking-wide text-gray-500">
+            Combined Digest &middot; both newsletters as one document, clearly separated
+          </p>
+          <NewsletterPreview
+            htmlCode={renderStandaloneDocument(combinedSections, "Newsletter")}
+            markdownCode={renderPlainText(combinedSections)}
+          />
+        </div>
       )}
     </div>
   )
@@ -182,16 +150,17 @@ export function NewsletterResult({ result, errorMessage }: NewsletterResultProps
 
   if (errorMessage) {
     return (
-      <Card className="w-full max-w-2xl">
-        <CardHeader>
-          <CardTitle>Upload Failed</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-destructive">{errorMessage}</p>
-        </CardContent>
-      </Card>
+      <div className="flex w-full max-w-3xl items-center gap-3 border-4 border-black bg-white p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
+        <AlertTriangle className="size-6 shrink-0 text-red-600" />
+        <div>
+          <p className="font-display text-sm font-black uppercase text-[#1A1A1A]">Upload Failed</p>
+          <p className="text-sm text-red-600">{errorMessage}</p>
+        </div>
+      </div>
     )
   }
 
-  return <NewsletterReview result={result!} />
+  // Keyed so switching to a different upload/saved newsletter resets the
+  // editable state below instead of carrying over edits from a prior one.
+  return <NewsletterReview key={`${result!.filename}-${result!.uploadedAt}`} result={result!} />
 }

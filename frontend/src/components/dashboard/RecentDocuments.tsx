@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { Search } from "lucide-react"
 import { DocumentCard } from "@/components/dashboard/DocumentCard"
-import { listNewsletters, type NewsletterListItem } from "@/lib/api"
+import { deleteNewsletter, listNewsletters, type NewsletterListItem } from "@/lib/api"
 
 const typeLabel: Record<string, string> = {
   whatsNew: "What's New",
@@ -57,6 +57,18 @@ export function RecentDocuments({ onSelect, refreshKey }: RecentDocumentsProps) 
     }
   }, [refreshKey])
 
+  const handleDelete = async (id: string) => {
+    // Optimistic-ish: only remove from the visible list once the server
+    // confirms the delete, so a failed request doesn't silently vanish an
+    // entry the user still has (they can just try again).
+    try {
+      await deleteNewsletter(id)
+      setItems((prev) => prev?.filter((item) => item.id !== id) ?? prev)
+    } catch (error) {
+      console.error("Failed to delete newsletter:", error instanceof Error ? error.message : error)
+    }
+  }
+
   const filtered = useMemo(() => {
     if (!items) return []
     const normalized = query.trim().toLowerCase()
@@ -71,32 +83,45 @@ export function RecentDocuments({ onSelect, refreshKey }: RecentDocumentsProps) 
   return (
     <section className="w-full max-w-5xl">
       <div className="mb-4 flex items-center justify-between gap-4">
-        <h2 className="text-lg font-semibold text-foreground">Newsletter Library</h2>
+        <h2 className="font-display text-xl font-black uppercase tracking-tight text-[#1A1A1A]">Newsletter Library</h2>
         <div className="relative w-64">
-          <Search className="absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Search className="absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-gray-500" />
           <input
             type="text"
             placeholder="Search by filename or title..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full rounded-md border border-border bg-background py-1.5 pr-3 pl-8 text-sm outline-none focus:border-ring"
+            className="w-full border-2 border-black bg-white py-1.5 pr-3 pl-8 text-sm font-medium text-[#1A1A1A] outline-none placeholder:text-gray-400 focus:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]"
           />
         </div>
       </div>
       {filtered.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No saved newsletters match "{query}".</p>
+        <p className="text-sm font-medium text-gray-500">No saved newsletters match "{query}".</p>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((item) => (
-            <button key={item.id} type="button" onClick={() => onSelect(item.id)} className="text-left">
+            <div
+              key={item.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => onSelect(item.id)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault()
+                  onSelect(item.id)
+                }
+              }}
+              className="cursor-pointer text-left"
+            >
               <DocumentCard
                 title={item.documentTitle ?? "Untitled document"}
                 updatedAt={relativeTime(item.createdAt)}
                 status={typeLabel[item.newsletterType] ?? item.newsletterType}
                 sourceFile={item.sourceFile}
                 rerunNote={rerunNote(item)}
+                onDelete={() => handleDelete(item.id)}
               />
-            </button>
+            </div>
           ))}
         </div>
       )}

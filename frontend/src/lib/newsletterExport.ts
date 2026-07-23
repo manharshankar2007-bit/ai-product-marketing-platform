@@ -105,7 +105,7 @@ ${renderContainerFragment(sections)}
 `
 }
 
-function renderPlainText(sections: ExportSection[]): string {
+export function renderPlainText(sections: ExportSection[]): string {
   return sections
     .map(({ newsletter: n, itemsHeading }) => {
       const lines: string[] = [n.title, "", n.intro]

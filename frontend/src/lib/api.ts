@@ -123,6 +123,11 @@ export async function getNewsletterById(id: string): Promise<NewsletterDetail> {
   return body
 }
 
+export async function deleteNewsletter(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/api/newsletters/${id}`, { method: "DELETE" })
+  if (!res.ok) throw new Error(`Failed to delete newsletter (HTTP ${res.status}).`)
+}
+
 /**
  * Uploads a PDF to the backend and waits for the fully generated
  * newsletter. Uses XMLHttpRequest (rather than fetch) specifically because

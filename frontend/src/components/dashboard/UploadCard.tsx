@@ -1,6 +1,5 @@
 import { useRef, useState, type DragEvent } from "react"
 import { FileText, Loader2, UploadCloud } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { uploadDocument, type UploadSuccessResponse } from "@/lib/api"
 
@@ -54,14 +53,12 @@ export function UploadCard({ onComplete, onError }: UploadCardProps) {
   }
 
   return (
-    <Card className="w-full max-w-2xl">
-      <CardHeader>
-        <CardTitle>Upload a PRD</CardTitle>
-        <CardDescription>
-          Drop a PDF here, or click to browse your files.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+    <div className="w-full max-w-2xl border-4 border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+      <div className="border-b-4 border-black px-6 py-4">
+        <h2 className="font-display text-lg font-black uppercase tracking-tight text-[#1A1A1A]">Upload a PRD</h2>
+        <p className="text-sm font-medium text-gray-600">Drop a PDF here, or click to browse your files.</p>
+      </div>
+      <div className="p-6">
         <div
           role="button"
           tabIndex={0}
@@ -150,7 +147,7 @@ export function UploadCard({ onComplete, onError }: UploadCardProps) {
             </>
           )}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
