@@ -5,8 +5,8 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc && mkdir -p dist/ai/prompts dist/style && cp src/ai/prompts/*.md dist/ai/prompts/ && cp src/style/*.md dist/style/",
-    "start": "node dist/server.js",
+    "build": "prisma generate && tsc && mkdir -p dist/ai/prompts dist/style && cp src/ai/prompts/*.md dist/ai/prompts/ && cp src/style/*.md dist/style/",
+    "start": "prisma migrate deploy && node dist/server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -26,6 +26,7 @@
     "morgan": "^1.11.0",
     "multer": "^2.2.0",
     "pdf-parse": "^2.4.5",
+    "prisma": "^7.8.0",
     "undici": "^8.8.0",
     "zod": "^4.4.3"
   },
@@ -35,7 +36,6 @@
     "@types/morgan": "^1.9.10",
     "@types/multer": "^2.2.0",
     "@types/node": "^26.1.1",
-    "prisma": "^7.8.0",
     "tsx": "^4.23.1",
     "typescript": "^7.0.2"
   }
