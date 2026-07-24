@@ -165,11 +165,6 @@ export async function extractChunkLive(chunk: DocumentChunk, outputReserveTokens
     firstSample: rawContent,
   })
 
-  console.log("==========================")
-  console.log("RAW MODEL RESPONSE")
-  console.log("==========================")
-  console.log(rawContent)
-
   const jsonParsingStartedAt = Date.now()
   let parsedJson: unknown
   try {
@@ -196,15 +191,7 @@ export async function extractChunkLive(chunk: DocumentChunk, outputReserveTokens
     outputCount: parsedFeatures.length,
     firstSample: parsedFeatures[0],
   })
-  console.log("==========================")
-  console.log("PARSED JSON")
-  console.log("==========================")
-  console.log(`Number of features: ${parsedFeatures.length}`)
-  for (const feature of parsedFeatures) {
-    const record = feature as Record<string, unknown>
-    console.log(`Title: ${String(record.title ?? "(missing)")}`)
-    console.log(`Raw status: ${"status" in record ? JSON.stringify(record.status) : "(missing)"}`)
-  }
+  console.log(`[chunkedExtraction] chunk ${chunk.index}: parsed ${parsedFeatures.length} feature(s)`)
 
   const defaultsFillStartedAt = Date.now()
   const filled = fillMissingExtractionDefaults(parsedJson)
@@ -229,14 +216,6 @@ export async function extractChunkLive(chunk: DocumentChunk, outputReserveTokens
     outputCount: normalizedFeatures.length,
     firstSample: normalizedFeatures[0],
   })
-  console.log("==========================")
-  console.log("AFTER NORMALIZATION")
-  console.log("==========================")
-  for (const feature of normalizedFeatures) {
-    const record = feature as Record<string, unknown>
-    console.log(`Title: ${String(record.title ?? "(missing)")}`)
-    console.log(`Normalized status: ${"status" in record ? JSON.stringify(record.status) : "(missing)"}`)
-  }
 
   const zodValidationStartedAt = Date.now()
   const validation = FeatureExtractionSchema.safeParse(normalized)
@@ -261,10 +240,7 @@ export async function extractChunkLive(chunk: DocumentChunk, outputReserveTokens
     firstSample: validation.data.features[0],
   })
 
-  console.log("==========================")
-  console.log("AFTER VALIDATION")
-  console.log("==========================")
-  console.log(`Number of validated features: ${validation.data.features.length}`)
+  console.log(`[chunkedExtraction] chunk ${chunk.index}: ${validation.data.features.length} feature(s) validated`)
 
   const rateLimitHeaders: Record<string, string> = {}
   responseHeaders?.forEach((value, key) => {

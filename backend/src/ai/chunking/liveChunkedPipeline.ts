@@ -67,10 +67,6 @@ export async function extractFeaturesChunkedLive(
     const result = await extractChunkLive(chunk, CHUNKED_PATH_MAX_OUTPUT_TOKENS)
     if (!isOllama) limiter.recordUsage(result.usage.totalTokens ?? chunk.estimatedTotalCallTokens)
 
-    // Evidence before merging, per the design requirement — if anything
-    // is wrong downstream, per-chunk raw output is visible without
-    // buying another live run.
-    console.log(`[chunkedPipeline] chunk ${chunk.index} raw extraction:`, result.rawContent)
     console.log(
       `[chunkedPipeline] chunk ${chunk.index} usage: prompt=${result.usage.promptTokens}, completion=${result.usage.completionTokens}, total=${result.usage.totalTokens}, finish_reason=${result.finishReason}`,
     )

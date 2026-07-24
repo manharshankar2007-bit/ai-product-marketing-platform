@@ -68,35 +68,12 @@ export class GroqProvider {
       typeof parsed === "object" && parsed !== null && Array.isArray((parsed as Record<string, unknown>).features)
         ? ((parsed as Record<string, unknown>).features as unknown[])
         : []
-    console.log("==========================")
-    console.log("PARSED JSON")
-    console.log("==========================")
-    console.log(`Number of features: ${parsedFeatures.length}`)
-    for (const feature of parsedFeatures) {
-      const record = feature as Record<string, unknown>
-      console.log(`Title: ${String(record.title ?? "(missing)")}`)
-      console.log(`Raw status: ${"status" in record ? JSON.stringify(record.status) : "(missing)"}`)
-    }
+    console.log(`[groqProvider] parsed ${parsedFeatures.length} feature(s)`)
 
     const normalized = normalizeFeatureStatuses(parsed)
-    const normalizedFeatures =
-      typeof normalized === "object" && normalized !== null && Array.isArray((normalized as Record<string, unknown>).features)
-        ? ((normalized as Record<string, unknown>).features as unknown[])
-        : []
-    console.log("==========================")
-    console.log("AFTER NORMALIZATION")
-    console.log("==========================")
-    for (const feature of normalizedFeatures) {
-      const record = feature as Record<string, unknown>
-      console.log(`Title: ${String(record.title ?? "(missing)")}`)
-      console.log(`Normalized status: ${"status" in record ? JSON.stringify(record.status) : "(missing)"}`)
-    }
 
-    const validated = this.validate(parsed)
-    console.log("==========================")
-    console.log("AFTER VALIDATION")
-    console.log("==========================")
-    console.log(`Number of validated features: ${validated.features.length}`)
+    const validated = this.validate(normalized)
+    console.log(`[groqProvider] ${validated.features.length} feature(s) validated`)
     return validated
   }
 
